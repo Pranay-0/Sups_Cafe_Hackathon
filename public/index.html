@@ -1,0 +1,27 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SUP's Cafe | Menu</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"></head><body>
+<header class="top"><div class="wrap">
+<div class="brand" id="brand"></div>
+<h1 id="title">SUP's Cafe</h1><p id="updated"></p></div></header>
+<main class="wrap" id="menu"><p class="note">Loading menu…</p></main>
+<footer class="wrap">Prices and availability change daily.</footer>
+<script src="/app.js"></script>
+<script>
+const row=i=>el('div',{class:'row'+(i.available===false||i.soldOut?' out-row':'')},
+  el('span',{class:'name'},i.name,i.soldOut?el('span',{class:'tag out'},'Sold out'):null),
+  el('span',{class:'dots'}),el('span',{class:'price'},money(i.price)));
+const block=(ic,title,note,items,fn)=>items.length?el('section',{},el('h2',{},icon(ic),title),note?el('p',{class:'note'},note):null,...items.map(fn)):null;
+fetch('/api/menu').then(r=>r.json()).then(m=>{
+  document.getElementById('brand').append(icon('coffee'));
+  document.getElementById('title').textContent=m.cafeName||"SUP's Cafe";
+  if(m.updated)document.getElementById('updated').textContent='Updated '+new Date(m.updated).toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'});
+  const main=document.getElementById('menu');main.replaceChildren(
+    block('star',"Today's specials",null,m.specials||[],s=>el('div',{class:'special'},row(s),s.description?el('p',{class:'desc'},s.description):null)),
+    block('sun','Fresh from the oven','Baked today, while stock lasts.',m.bakes||[],row),
+    ...(m.categories||[]).map(c=>block('list',c.name,null,c.items.filter(i=>i.name),i=>el('div',{},row(i),i.description?el('p',{class:'desc'},i.description):null))));
+}).catch(()=>document.getElementById('menu').replaceChildren(el('p',{class:'note'},'The menu could not be loaded. Please refresh.')));
+</script></body></html>

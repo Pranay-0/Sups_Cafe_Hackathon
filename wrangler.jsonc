@@ -1,0 +1,7 @@
+{
+  "name": "sups-cafe",
+  "main": "src/worker.js",
+  "compatibility_date": "2026-09-01",
+  "assets": { "directory": "./public", "run_worker_first": ["/api/*"] },
+  "kv_namespaces": [{ "binding": "MENU", "id": "5dc99fbe075c48b480a9095db9495f99" }]
+}

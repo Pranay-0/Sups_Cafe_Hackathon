@@ -1,0 +1,47 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
+<title>Menu editor</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css"></head><body>
+<div class="bar"><div class="wrap"><h3>Menu editor</h3>
+<div style="display:flex;gap:16px;align-items:center"><span class="status" id="status"></span><button id="save"></button></div></div></div>
+<main class="wrap" id="app" style="padding-bottom:80px"></main>
+<script src="/app.js"></script>
+<script>
+let m;const app=document.getElementById('app'),st=document.getElementById('status'),sb=document.getElementById('save');
+sb.append(icon('save'),'Save changes');
+const inp=(o,k,ph,type='text')=>el('input',{type,placeholder:ph,value:o[k]??'',step:type==='number'?'0.5':null,min:type==='number'?'0':null,
+  oninput:e=>{o[k]=type==='number'?parseFloat(e.target.value)||0:e.target.value;dirty()}});
+const del=fn=>el('button',{class:'ghost icon-btn',title:'Remove',onclick:()=>{fn();draw()}},icon('trash'));
+const add=(label,fn)=>el('button',{class:'ghost',onclick:()=>{fn();draw()}},icon('plus'),label);
+const chk=(o,k,label)=>el('label',{class:'chk'},el('input',{type:'checkbox',checked:!!o[k],onchange:e=>{o[k]=e.target.checked;dirty()}}),label);
+function dirty(){st.className='status';st.textContent='Unsaved changes'}
+function draw(){app.replaceChildren(
+ el('section',{},el('h2',{},'Cafe name'),el('div',{class:'card'},inp(m,'cafeName','Cafe name'))),
+ el('section',{},el('h2',{},icon('star'),"Today's specials"),
+  el('div',{class:'card'},...m.specials.map((s,i)=>el('div',{class:'edit sp'},inp(s,'name','Special'),inp(s,'price','Price','number'),del(()=>m.specials.splice(i,1)),
+    el('div',{class:'full'},inp(s,'description','Short description (optional)')))),
+   add('Add special',()=>m.specials.push({name:'',price:0,description:''})))),
+ el('section',{},el('h2',{},icon('sun'),'Daily bakes'),
+  el('div',{class:'card'},...m.bakes.map((b,i)=>el('div',{class:'edit'},inp(b,'name','Bake'),inp(b,'price','Price','number'),chk(b,'soldOut','Sold out'),del(()=>m.bakes.splice(i,1)))),
+   add('Add bake',()=>m.bakes.push({name:'',price:0,soldOut:false})))),
+ ...m.categories.map((c,ci)=>el('section',{},el('div',{class:'card'},
+   el('div',{class:'cat-head'},inp(c,'name','Category name'),del(()=>m.categories.splice(ci,1))),
+   ...c.items.map((it,i)=>el('div',{class:'edit'},inp(it,'name','Item'),inp(it,'price','Price','number'),chk(it,'unavailable','Hide'),del(()=>c.items.splice(i,1)))),
+   add('Add item',()=>c.items.push({name:'',price:0,description:''}))))),
+ el('section',{},add('Add category',()=>m.categories.push({name:'New category',items:[]}))))}
+sb.onclick=async()=>{st.className='status';st.textContent='Saving…';
+ m.categories.forEach(c=>c.items.forEach(i=>i.available=!i.unavailable));
+ try{const r=await fetch('/api/admin/menu',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(m)});
+  if(!r.ok)throw new Error((await r.json()).error||'Error');st.textContent='Saved. The menu is live.'}
+ catch(e){st.className='status err';st.textContent='Could not save: '+e.message;if(/sign in/i.test(e.message))login()}};
+function start(){sb.style.display='';fetch('/api/menu').then(r=>r.json()).then(d=>{m=d;m.specials??=[];m.bakes??=[];m.categories??=[];
+ m.categories.forEach(c=>c.items.forEach(i=>i.unavailable=i.available===false));draw()})}
+function login(msg){sb.style.display='none';st.textContent='';let pw;
+ const go=async()=>{const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:pw.value})});
+  if(r.ok)start();else login((await r.json()).error||'Could not sign in')};
+ pw=el('input',{type:'password',placeholder:'Password',autocomplete:'current-password',onkeydown:e=>{if(e.key==='Enter')go()}});
+ app.replaceChildren(el('section',{},el('h2',{},'Owner sign in'),el('div',{class:'card'},pw,el('div',{style:'margin-top:12px'},el('button',{onclick:go},'Sign in')),el('p',{class:'status err'},msg||''))));pw.focus()}
+const out=el('button',{class:'ghost',onclick:async()=>{await fetch('/api/logout',{method:'POST'});login()}},'Sign out');sb.before(out);
+fetch('/api/session').then(r=>r.ok?start():login());
+</script></body></html>
