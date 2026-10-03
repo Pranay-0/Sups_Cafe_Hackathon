@@ -11,4 +11,7 @@ The owner password is a Cloudflare secret, checked on the server. It is never in
    - `SESSION_SECRET`: any long random string (40+ characters)
 5. Open `/admin`, sign in, edit, Save. Refresh `/`.
 
+**url: sups-cafe-hackathon.pranay-patel0804.workers.dev
+**admin: sups-cafe-hackathon.pranay-patel0804.workers.dev/admin/
+
 Wrong passwords: 5 tries per 15 minutes per visitor, then locked out for a while.
