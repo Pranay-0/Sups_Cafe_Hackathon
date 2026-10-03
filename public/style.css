@@ -53,22 +53,13 @@ header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4.2r
 header.top p{margin:14px 0 0;color:var(--tan);font-size:.95rem;letter-spacing:.02em}
 header.top p:empty{display:none}
 
-/* ---------- Menu layout: 1 column on phones, 2 on desktop ---------- */
-#menu.wrap{max-width:1040px;padding-bottom:24px}
+/* ---------- Menu layout: title, one photo, then the list ---------- */
+#menu.wrap{padding-bottom:24px}
 #menu>.note{padding:48px 0;text-align:center}
 
-#menu section{
-  display:grid;
-  grid-template-columns:1fr;
-  column-gap:56px;
-  align-items:start;
-  padding:52px 0 8px;
-}
-@media(min-width:800px){#menu section{grid-template-columns:1fr 1fr}}
+#menu section{padding:52px 0 8px}
 
 /* Section title: icon, name, then a tan rule out to the edge */
-#menu section>h2,
-#menu section>.note{grid-column:1/-1}
 #menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
 #menu section>h2 .icon{font-size:.8em}
 #menu section>h2::after{
@@ -80,7 +71,8 @@ header.top p:empty{display:none}
 #menu section>.note{color:var(--green);font-weight:500;font-size:.92rem;margin:0 0 10px}
 
 /* Each item is a grid cell with a hairline underneath */
-#menu section>div:not(.special){padding:6px 0 10px;border-bottom:1px solid var(--rule)}
+#menu .items>div:not(.special){padding:4px 0 10px;border-bottom:1px solid var(--rule)}
+#menu .items>div:last-child{border-bottom:0}
 
 /* ---------- Price row: "Flat white ........ R38.00" ---------- */
 .row{display:flex;align-items:baseline;gap:8px;padding:10px 0 4px}
@@ -104,12 +96,11 @@ header.top p:empty{display:none}
 .out-row .name,.out-row .price{text-decoration:line-through;opacity:.5}
 .out-row .name .tag{text-decoration:none;display:inline-block}
 
-/* ---------- Photos ---------- */
-.photo{
-  display:block;width:100%;aspect-ratio:4/3;max-height:340px;
-  object-fit:cover;border-radius:6px;margin:8px 0 6px;background:var(--rule);
+/* ---------- The one photo per section ---------- */
+.section-photo{
+  display:block;width:100%;aspect-ratio:16/8;
+  object-fit:cover;border-radius:6px;margin:14px 0 16px;background:var(--rule);
 }
-#menu section>.photo{margin:0 0 10px}
 
 /* ---------- Today's specials ---------- */
 .special{
@@ -120,20 +111,24 @@ header.top p:empty{display:none}
 .special .row{padding-top:6px}
 .special .row .name{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.35rem;font-weight:700;color:var(--maroon)}
 .special .desc{margin-bottom:6px}
-.special .photo{margin:10px 0 2px}
 
-/* ---------- Footer: full-width charcoal band ---------- */
+/* ---------- Footer: full-width charcoal band (copyright + admin link) ---------- */
 footer{
-  margin-top:64px;padding:34px 20px 40px;text-align:center;
+  margin-top:64px;padding:50px 20px 36px;
+  display:flex;flex-wrap:wrap;gap:8px 24px;
+  justify-content:space-between;align-items:center;
   color:var(--tan);font-size:.9rem;
-  background:var(--char);border-top:4px solid var(--terra);
+  background:linear-gradient(var(--gold),var(--gold)) center 22px/48px 2px no-repeat var(--char);
+  border-top:4px solid var(--terra);
   box-shadow:0 0 0 100vmax var(--char);clip-path:inset(0 -100vmax);
 }
-footer::before{content:"";display:block;width:48px;height:2px;margin:0 auto 16px;background:var(--gold)}
+footer a{color:var(--tan);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
+footer a:hover,footer a:focus-visible{color:var(--cream);border-bottom-color:var(--gold)}
 
 @media(max-width:560px){
   header.top{padding:40px 0 34px}
   .row .price{font-size:1.2rem}
+  footer{justify-content:center;text-align:center}
 }
 
 /* =========================================================
