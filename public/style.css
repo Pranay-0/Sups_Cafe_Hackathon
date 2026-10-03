@@ -1,17 +1,14 @@
 /* =========================================================
    SUP's Cafe: stylesheet
-   Part 1: shared basics
-   Part 2: PUBLIC PAGE (scoped to header.top, #menu, footer)
-   Part 3: ADMIN (unchanged from the original)
+   Part 1: shared basics   Part 2: PUBLIC PAGE   Part 3: ADMIN (original)
 
-   Colour roles (kept deliberately simple)
-   White  #FFFFFF  public page background
-   Cream  #F4EFE6  special cards, admin background
-   Maroon #5E1B1D  header band, headings, prices
-   Char   #1F1F1F  body text, footer band
-   Terra  #C85A37  the one accent: small icons, special-card edge
-   Tan    #C89B6D  hairlines and leader dots only
-   (Gold #C68640 and Green #4A6741 are only used by the admin)
+   Colour roles
+   White  public page background
+   Maroon #5E1B1D  header band, card text, "sold out" tag
+   Terra  #C85A37  the bold colour: avatar, prices, specials band, dashes
+   Tan    #C89B6D  awning stripe, leader dots, hairlines
+   Char   #1F1F1F  headings, body text, footer
+   Cream  #F4EFE6  cards inside the specials band
    ========================================================= */
 
 :root{--cream:#F4EFE6;--maroon:#5E1B1D;--char:#1F1F1F;--terra:#C85A37;--gold:#C68640;--green:#4A6741;--tan:#C89B6D;--line:#DDD3C2;--r:4px;
@@ -33,113 +30,107 @@ section>h2 .icon{color:var(--terra)}
 /* =========================================================
    2. PUBLIC PAGE
    ========================================================= */
-
-/* Public page sits on white (the admin keeps its cream) */
 body:has(#menu){background:#fff}
+::selection{background:var(--terra);color:#fff}
+html{scroll-padding-top:16px}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
 
-/* ---------- Header: flat maroon band ---------- */
-header.top{background:var(--maroon);padding:52px 0 42px;text-align:center}
+/* ---------- Header: maroon band + striped awning ---------- */
+header.top{position:relative;background:var(--maroon);padding:26px 0 28px;text-align:center}
 header.top .brand{
   display:flex;justify-content:center;align-items:center;
-  width:60px;height:60px;margin:0 auto 16px;
-  border:1.5px solid rgba(244,239,230,.5);border-radius:50%;
-  color:var(--cream);font-size:1.5rem;
+  width:44px;height:44px;margin:0 auto 10px;border-radius:50%;
+  background:var(--terra);color:#fff;font-size:1.15rem;
 }
-header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4rem);letter-spacing:.01em}
-header.top .tagline{margin:10px 0 0;color:var(--cream);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.3rem}
-header.top p{margin:12px 0 0;color:rgba(244,239,230,.8);font-size:.9rem}
-header.top #updated{display:inline-block;margin-top:18px;padding:4px 16px;border:1px solid rgba(244,239,230,.35);border-radius:99px}
-header.top p:empty{display:none}
-/* Awning-style scalloped edge along the bottom of the header */
-header.top{position:relative}
+header.top h1{
+  font-family:'Montserrat',system-ui,sans-serif;font-weight:800;text-transform:uppercase;
+  letter-spacing:.05em;line-height:1.05;color:#fff;font-size:clamp(1.7rem,5vw,2.4rem);
+}
+header.top .tagline{margin:0;color:var(--cream);font-size:.98rem;font-weight:500}
+header.top .tagline::before{content:"";display:block;width:40px;height:3px;border-radius:2px;background:var(--terra);margin:10px auto 10px}
+header.top #updated{display:inline-block;margin:12px 0 0;padding:3px 14px;font-size:.8rem;color:rgba(244,239,230,.85);border:1px solid rgba(244,239,230,.35);border-radius:99px}
+header.top #updated:empty{display:none}
 header.top::after{
-  content:"";position:absolute;left:0;right:0;top:100%;height:12px;
-  background:radial-gradient(circle at 12px 0,var(--maroon) 11.5px,transparent 12px) 0 0/24px 12px repeat-x;
+  content:"";position:absolute;left:0;right:0;top:100%;height:14px;z-index:2;
+  background:radial-gradient(circle at 14px 0,var(--terra) 13.5px,transparent 14px),
+             radial-gradient(circle at 42px 0,var(--tan) 13.5px,transparent 14px);
+  background-size:56px 14px;background-repeat:repeat-x;
 }
 
-/* ---------- Menu: photo, then title, then the list ---------- */
-#menu.wrap{padding-bottom:24px}
+/* ---------- Section tabs ---------- */
+.tabs .wrap{max-width:960px;display:flex;gap:8px;overflow-x:auto;padding-top:30px;padding-bottom:6px;scrollbar-width:none}
+.tabs .wrap::-webkit-scrollbar{display:none}
+.tabs a{
+  flex:none;padding:9px 16px;border:2px solid var(--char);border-radius:99px;color:var(--char);
+  font:700 .74rem/1 'Montserrat',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.07em;
+  text-decoration:none;white-space:nowrap;transition:background .15s,border-color .15s,color .15s;
+}
+.tabs a:first-child{margin-left:auto}.tabs a:last-child{margin-right:auto}
+.tabs a:hover,.tabs a:focus-visible{background:var(--terra);border-color:var(--terra);color:#fff}
+
+/* ---------- Menu sections ---------- */
+#menu.wrap{max-width:960px;padding-bottom:24px}
 #menu>.note{padding:48px 0;text-align:center}
-#menu section{padding:44px 0 8px}
-#menu section+section{margin-top:12px}
+#menu section{padding:52px 0 8px}
 
-.section-photo{
-  display:block;width:100%;aspect-ratio:16/10;   /* phones: roomy, food stays visible */
-  object-fit:cover;object-position:center 40%;
-  border-radius:6px;margin:0 0 22px;background:var(--rule);
+#menu section>h2{
+  display:block;font-family:'Montserrat',system-ui,sans-serif;font-weight:800;text-transform:uppercase;
+  letter-spacing:.04em;line-height:1.1;color:var(--char);font-size:clamp(1.6rem,4.5vw,2.5rem);margin:0 0 6px;
 }
-@media(min-width:600px){
-  .section-photo{aspect-ratio:21/9}               /* wider screens: slim banner, ~300px tall */
-}
+#menu section>h2 .icon{display:none}
+#menu section>h2::after{content:"";display:block;width:56px;height:4px;border-radius:2px;background:var(--terra);margin-top:12px}
+#menu section>.note{color:var(--muted);font-size:.95rem;font-weight:500;margin:10px 0 6px}
 
-#menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
-#menu section>h2 .icon{font-size:.75em}
-#menu section>h2::after{content:"";flex:1;height:1px;background:var(--rule);margin-left:8px;transform:translateY(3px)}
-#menu section>.note{color:var(--muted);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.2rem;margin:0 0 6px}
+/* Section photo with the title laid over it */
+.section-photo{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;object-position:center 40%;background:var(--rule)}
+@media(min-width:600px){.section-photo{aspect-ratio:21/9}}
+@media(min-width:900px){.section-photo{aspect-ratio:3/1}}
+.hero{position:relative;margin:0 0 26px;border-radius:10px;overflow:hidden}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(31,31,31,.8),rgba(31,31,31,0) 65%)}
+#menu .hero h2{position:absolute;z-index:1;left:28px;right:28px;bottom:22px;margin:0;color:#fff;text-shadow:0 1px 12px rgba(0,0,0,.35)}
 
-#menu .items>div:not(.special){padding:4px 0 10px;border-bottom:1px solid var(--rule)}
-#menu .items>div:last-child{border-bottom:0}
+/* ---------- Item lists: two columns on desktop ---------- */
+.items{margin-top:6px}
+@media(min-width:800px){.items{column-count:2;column-gap:64px}}
+.items>div{break-inside:avoid}
+#menu .items>div:not(.special){padding:4px 0 12px;border-bottom:1px solid var(--rule)}
 
-/* ---------- Price row: "Flat white ........ R38.00" ---------- */
 .row{display:flex;align-items:baseline;gap:8px;padding:10px 0 4px}
-.row .name{font-weight:600;font-size:1.05rem;letter-spacing:.005em}
+.row .name{font-weight:600;font-size:1.05rem}
 .row .dots{flex:1;min-width:16px;border-bottom:2px dotted var(--tan);transform:translateY(-4px)}
-.row .price{
-  font-family:'Cormorant Garamond',Georgia,serif;
-  font-weight:700;font-size:1.35rem;line-height:1;
-  color:var(--maroon);font-variant-numeric:tabular-nums;
-}
+.row .price{font-family:'Montserrat',system-ui,sans-serif;font-weight:800;font-size:1.2rem;line-height:1;color:var(--terra);font-variant-numeric:tabular-nums}
 .desc{margin:0 0 8px;color:var(--muted);font-size:.9rem;line-height:1.5;max-width:52ch}
-
 .tag{display:inline-block;font-size:.74rem;font-weight:600;background:var(--maroon);color:var(--cream);padding:2px 9px;border-radius:99px;margin-left:10px;vertical-align:2px}
-
-/* Sold out: struck through and faded, tag stays readable */
 .out-row .name,.out-row .price{text-decoration:line-through;opacity:.5}
 .out-row .name .tag{text-decoration:none;display:inline-block}
 
-/* ---------- Today's specials: cream card, terracotta edge ---------- */
-.special{background:var(--cream);border:0;box-shadow:0 1px 3px rgba(94,27,29,.08);border-left:4px solid var(--terra);border-radius:6px;padding:10px 18px 12px;margin:8px 0 14px}
+/* ---------- Today's specials: full-width terracotta band ---------- */
+#today-s-specials{
+  background:var(--terra);margin:36px 0 8px;padding:48px 0 32px;
+  box-shadow:0 0 0 100vmax var(--terra);clip-path:inset(0 -100vmax);
+}
+#today-s-specials>h2{color:#fff}
+#today-s-specials>h2::after{background:#fff}
+#today-s-specials>.note{color:#fff}
+.special{background:var(--cream);border-radius:8px;padding:8px 20px 12px;margin:0 0 16px}
 .special .row{padding-top:6px}
-.special .row .name{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.35rem;font-weight:700;color:var(--maroon)}
-.special .desc{margin-bottom:4px}
+.special .row .name{font-family:'Montserrat',system-ui,sans-serif;font-weight:700;font-size:1.1rem;color:var(--maroon)}
+.special .row .price{color:var(--maroon)}
 
-::selection{background:var(--terra);color:#fff}
-
-/* ---------- Footer: full-width charcoal band ---------- */
+/* ---------- Footer ---------- */
+footer.wrap{max-width:960px}
 footer{
-  margin-top:64px;padding:34px 20px;
-  display:flex;flex-wrap:wrap;gap:8px 24px;
+  margin-top:72px;padding:36px 20px;display:flex;flex-wrap:wrap;gap:8px 24px;
   justify-content:space-between;align-items:center;
-  color:rgba(244,239,230,.7);font-size:.9rem;
-  background:var(--char);
+  color:rgba(244,239,230,.7);font-size:.9rem;background:var(--char);
   box-shadow:0 0 0 100vmax var(--char);clip-path:inset(0 -100vmax);
 }
-footer a{color:var(--cream);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s}
+footer a{color:#fff;text-decoration:none;border-bottom:2px solid var(--terra);transition:border-color .15s}
 footer a:hover,footer a:focus-visible{border-bottom-color:var(--tan)}
 
-/* ---------- Section tabs (normal row under the header) ---------- */
-html{scroll-padding-top:16px}
-@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
-.tabs{border-bottom:1px solid var(--rule)}
-.tabs .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:26px;padding-bottom:12px;scrollbar-width:none}
-.tabs .wrap::-webkit-scrollbar{display:none}
-.tabs a{flex:none;padding:6px 15px;border-radius:99px;color:var(--maroon);font-weight:500;font-size:.92rem;text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
-.tabs a:first-child{margin-left:auto}.tabs a:last-child{margin-right:auto}
-.tabs a{background:var(--cream)}
-.tabs a:hover,.tabs a:focus-visible{background:var(--maroon);color:var(--cream)}
-
-/* ---------- Section photo with the title laid over it ---------- */
-.hero{position:relative;margin:0 0 18px;border-radius:8px;overflow:hidden;box-shadow:0 6px 18px -8px rgba(31,31,31,.35)}
-.hero .section-photo{margin:0;border-radius:0}
-.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(31,31,31,.75),rgba(31,31,31,0) 62%)}
-.hero h2{position:absolute;z-index:1;left:24px;right:24px;bottom:18px;margin:0;color:#fff;font-size:clamp(2rem,5vw,2.8rem);text-shadow:0 1px 12px rgba(0,0,0,.35)}
-.hero h2::after{display:none}
-.hero h2 .icon{color:var(--cream)}
-
 @media(max-width:560px){
-  .hero h2{left:16px;bottom:12px}
-  header.top{padding:40px 0 34px}
-  .row .price{font-size:1.2rem}
+  header.top{padding:22px 0 24px}
+  #menu .hero h2{left:18px;bottom:16px}
   footer{justify-content:center;text-align:center}
 }
 

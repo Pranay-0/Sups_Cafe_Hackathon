@@ -6,7 +6,7 @@
   <title>SUP's Cafe | Menu</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -15,6 +15,7 @@
     <div class="wrap">
       <div class="brand" id="brand"></div>
       <h1 id="title">SUP's Cafe</h1>
+      <p class="tagline">Baked and made fresh, every day</p>
       <p id="updated"></p>
     </div>
   </header>
@@ -59,15 +60,25 @@
       return item.description ? el('p', { class: 'desc' }, item.description) : null;
     }
 
-    // Section = ONE photo first, then the title, optional note and the list of items.
+    // Section = ONE photo first (with the title laid over it), then note and items.
     function menuSection(iconName, title, note, imageId, items, renderItem) {
       if (items.length === 0) return null;
-      return el('section', {},
-        sectionPhoto(imageId, title),
-        el('h2', {}, icon(iconName), title),
+      const heading = el('h2', {}, icon(iconName), title);
+      return el('section', { id: title.toLowerCase().replace(/[^a-z0-9]+/g, '-') },
+        imageId ? el('div', { class: 'hero' }, sectionPhoto(imageId, title), heading) : heading,
         note ? el('p', { class: 'note' }, note) : null,
         el('div', { class: 'items' }, ...items.map(renderItem))
       );
+    }
+
+    // Row of links that jump to each section.
+    function buildTabs(sections) {
+      document.querySelector('.tabs')?.remove();
+      if (sections.length < 2) return;
+      const links = sections.map(sec => el('a', { href: '#' + sec.id }, sec.querySelector('h2').textContent));
+      const nav = el('nav', { class: 'tabs', 'aria-label': 'Menu sections' }, el('div', { class: 'wrap' }, ...links));
+      document.querySelector('header.top').after(nav);
+
     }
 
     const renderItem = item => el('div', {}, priceRow(item), description(item));
@@ -100,6 +111,7 @@
       ].filter(Boolean);
 
       document.getElementById('menu').replaceChildren(...sections);
+      buildTabs(sections);
     }
 
     fetch('/api/menu')
