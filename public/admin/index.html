@@ -131,8 +131,8 @@
       return (await response.json()).id;
     }
 
-    // The "Add photo" control shown on any item. `item.image` holds the id.
-    function photoPicker(item) {
+    // Photo control for a whole section. `obj[key]` holds the image id.
+    function photoPicker(obj, key = 'image') {
       const fileInput = el('input', {
         type: 'file',
         accept: 'image/*',
@@ -142,7 +142,7 @@
 
           setStatus('Uploading photo…');
           try {
-            item.image = await uploadPhoto(file);
+            obj[key] = await uploadPhoto(file);
             setStatus('Photo added. Remember to save changes.');
             draw();
           } catch (err) {
@@ -155,17 +155,17 @@
       const removePhoto = el('button', {
         class: 'ghost icon-btn',
         title: 'Remove photo',
-        onclick: () => { item.image = ''; markUnsaved(); draw(); },
+        onclick: () => { obj[key] = ''; markUnsaved(); draw(); },
       }, icon('trash'));
 
       return el('div', { class: 'pic' },
-        item.image ? el('img', { src: '/api/img/' + item.image, alt: '' }) : null,
+        obj[key] ? el('img', { src: '/api/img/' + obj[key], alt: '' }) : null,
         el('label', { class: 'btn' },
           icon('image'),
-          item.image ? 'Change photo' : 'Add photo (optional)',
+          obj[key] ? 'Change section photo' : 'Add section photo',
           fileInput
         ),
-        item.image ? removePhoto : null
+        obj[key] ? removePhoto : null
       );
     }
 
@@ -186,16 +186,16 @@
           textInput(special, 'name', 'Special'),
           numberInput(special, 'price', 'Price'),
           removeButton(() => menu.specials.splice(index, 1)),
-          el('div', { class: 'full' }, textInput(special, 'description', 'Short description (optional)')),
-          el('div', { class: 'full' }, photoPicker(special))
+          el('div', { class: 'full' }, textInput(special, 'description', 'Short description (optional)'))
         )
       );
 
       return el('section', {},
         el('h2', {}, icon('star'), "Today's specials"),
         el('div', { class: 'card' },
+          photoPicker(menu, 'specialsImage'),
           ...rows,
-          addButton('Add special', () => menu.specials.push({ name: '', price: 0, description: '', image: '' }))
+          addButton('Add special', () => menu.specials.push({ name: '', price: 0, description: '' }))
         )
       );
     }
@@ -206,34 +206,28 @@
           textInput(bake, 'name', 'Bake'),
           numberInput(bake, 'price', 'Price'),
           checkbox(bake, 'soldOut', 'Sold out'),
-          removeButton(() => menu.bakes.splice(index, 1)),
-          el('div', { class: 'full' }, photoPicker(bake))
+          removeButton(() => menu.bakes.splice(index, 1))
         )
       );
 
       return el('section', {},
         el('h2', {}, icon('sun'), 'Daily bakes'),
         el('div', { class: 'card' },
+          photoPicker(menu, 'bakesImage'),
           ...rows,
-          addButton('Add bake', () => menu.bakes.push({ name: '', price: 0, soldOut: false, image: '' }))
+          addButton('Add bake', () => menu.bakes.push({ name: '', price: 0, soldOut: false }))
         )
       );
     }
 
-    // One row inside a category: a normal item, or a photo on its own.
+    // One item row inside a category (photos now live on the section, not the item).
     function categoryItemRow(category, item, index) {
-      const remove = removeButton(() => category.items.splice(index, 1));
-
-      if (item.photoOnly) {
-        return el('div', { class: 'edit solo' }, photoPicker(item), remove);
-      }
-
-      return el('div', { class: 'edit' },
+      return el('div', { class: 'edit sp' },
         textInput(item, 'name', 'Item'),
         numberInput(item, 'price', 'Price'),
         checkbox(item, 'unavailable', 'Hide'),
-        remove,
-        el('div', { class: 'full' }, photoPicker(item))
+        removeButton(() => category.items.splice(index, 1)),
+        el('div', { class: 'full' }, textInput(item, 'description', 'Short description (optional)'))
       );
     }
 
@@ -244,20 +238,17 @@
             textInput(category, 'name', 'Category name'),
             removeButton(() => menu.categories.splice(categoryIndex, 1))
           ),
+          photoPicker(category, 'image'),
           ...category.items.map((item, i) => categoryItemRow(category, item, i)),
-          el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
-            addButton('Add item', () =>
-              category.items.push({ name: '', price: 0, description: '', image: '' })),
-            addButton('Add photo', () =>
-              category.items.push({ name: '', price: 0, description: '', image: '', photoOnly: true }))
-          )
+          addButton('Add item', () =>
+            category.items.push({ name: '', price: 0, description: '' }))
         )
       );
     }
 
     function addCategorySection() {
       return el('section', {},
-        addButton('Add category', () => menu.categories.push({ name: 'New category', items: [] }))
+        addButton('Add category', () => menu.categories.push({ name: 'New category', image: '', items: [] }))
       );
     }
 
@@ -287,12 +278,15 @@
           menu.bakes      ??= [];
           menu.categories ??= [];
 
-          // Editor-only flags (the server doesn't store these)
+          // Older menus had a photo per item: keep the first one as the section photo.
+          const firstPhoto = list => (list.find(i => i.image) || {}).image || '';
+          menu.specialsImage ||= firstPhoto(menu.specials);
+          menu.bakesImage    ||= firstPhoto(menu.bakes);
+
           menu.categories.forEach(category => {
-            category.items.forEach(item => {
-              item.unavailable = item.available === false;
-              item.photoOnly   = !item.name && !!item.image;
-            });
+            category.image ||= firstPhoto(category.items);
+            category.items = category.items.filter(i => i.name || !i.image); // drop old photo-only rows
+            category.items.forEach(item => { item.unavailable = item.available === false; });
           });
 
           draw();
@@ -327,39 +321,16 @@
     // Sign in / sign out
     // =========================================================
 
-function showLogin(message) {
+    function showLogin(message) {
       saveBtn.style.display = 'none';
       setStatus('');
 
       const passwordInput = el('input', {
         type: 'password',
-        class: 'login-input', 
         placeholder: 'Password',
         autocomplete: 'current-password',
-        style: 'flex: 1;', // Ensures the input takes up the remaining horizontal space
         onkeydown: e => { if (e.key === 'Enter') submit(); },
       });
-
-      // Create the toggle button
-      const toggleBtn = el('button', {
-        class: 'ghost',
-        style: 'white-space: nowrap;',
-        onclick: () => {
-          if (passwordInput.type === 'password') {
-            passwordInput.type = 'text';
-            toggleBtn.textContent = 'Hide';
-          } else {
-            passwordInput.type = 'password';
-            toggleBtn.textContent = 'Show';
-          }
-        }
-      }, 'Show');
-
-      // Wrap the input and button in a flexbox container
-      const passwordWrapper = el('div', { style: 'display: flex; gap: 8px; width: 100%;' }, 
-        passwordInput, 
-        toggleBtn
-      );
 
       async function submit() {
         const response = await fetch('/api/login', {
@@ -375,7 +346,7 @@ function showLogin(message) {
         el('section', {},
           el('h2', {}, 'Owner sign in'),
           el('div', { class: 'card' },
-            passwordWrapper, // Place the wrapper here instead of the raw input
+            passwordInput,
             el('div', { style: 'margin-top:12px' }, el('button', { onclick: submit }, 'Sign in')),
             el('p', { class: 'status err' }, message || '')
           )

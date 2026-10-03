@@ -31,22 +31,18 @@
 
   <script src="/app.js"></script>
   <script>
-    // =========================================================
-    // Small building blocks (each one returns a DOM element)
-    // =========================================================
-
-    // An optional photo. Returns nothing if the item has no image.
-    function photo(item) {
-      if (!item.image) return null;
+    // One photo per section (chosen by the owner in the editor).
+    function sectionPhoto(imageId, title) {
+      if (!imageId) return null;
       return el('img', {
-        class: 'photo',
-        src: '/api/img/' + item.image,
-        alt: item.name || 'Menu photo',
+        class: 'section-photo',
+        src: '/api/img/' + imageId,
+        alt: title,
         loading: 'lazy',
       });
     }
 
-    // "Flat white ........ R38.00", greyed out if sold out / hidden.
+    // "Flat white ........ R38.00", struck through if sold out / hidden.
     function priceRow(item) {
       const isOut = item.available === false || item.soldOut;
       return el('div', { class: 'row' + (isOut ? ' out-row' : '') },
@@ -59,54 +55,23 @@
       );
     }
 
-    // Optional short description under a row.
     function description(item) {
       return item.description ? el('p', { class: 'desc' }, item.description) : null;
     }
 
-    // A titled section. Returns nothing if there are no items.
-    function menuSection(iconName, title, note, items, renderItem) {
+    // Section = ONE photo first, then the title, optional note and the list of items.
+    function menuSection(iconName, title, note, imageId, items, renderItem) {
       if (items.length === 0) return null;
       return el('section', {},
+        sectionPhoto(imageId, title),
         el('h2', {}, icon(iconName), title),
         note ? el('p', { class: 'note' }, note) : null,
-        ...items.map(renderItem)
+        el('div', { class: 'items' }, ...items.map(renderItem))
       );
     }
 
-    // =========================================================
-    // How each kind of item is displayed
-    // =========================================================
-
-    function renderSpecial(special) {
-      return el('div', { class: 'special' },
-        priceRow(special),
-        description(special),
-        photo(special)
-      );
-    }
-
-    function renderBake(bake) {
-      return el('div', {},
-        priceRow(bake),
-        photo(bake)
-      );
-    }
-
-    function renderCategoryItem(item) {
-      // No name = a standalone photo placed in the category.
-      if (!item.name) return photo(item);
-
-      return el('div', {},
-        priceRow(item),
-        description(item),
-        photo(item)
-      );
-    }
-
-    // =========================================================
-    // Put the whole menu on the page
-    // =========================================================
+    const renderItem = item => el('div', {}, priceRow(item), description(item));
+    const renderSpecial = item => el('div', { class: 'special' }, priceRow(item), description(item));
 
     function renderMenu(menu) {
       document.getElementById('brand').append(icon('coffee'));
@@ -119,24 +84,20 @@
         document.getElementById('updated').textContent = 'Updated ' + date;
       }
 
-      const categorySections = (menu.categories || []).map(category => {
-        // Keep items that have a name OR a photo.
-        const items = category.items.filter(i => i.name || i.image);
-        return menuSection('list', category.name, null, items, renderCategoryItem);
-      });
+      const named = list => (list || []).filter(i => i.name);
+
+      const categorySections = (menu.categories || []).map(category =>
+        menuSection('list', category.name, null, category.image, named(category.items), renderItem)
+      );
 
       const sections = [
-        menuSection('star', "Today's specials", null, menu.specials || [], renderSpecial),
-        menuSection('sun', 'Fresh from the oven', 'Baked today, while stock lasts.', menu.bakes || [], renderBake),
+        menuSection('star', "Today's specials", null, menu.specialsImage, named(menu.specials), renderSpecial),
+        menuSection('sun', 'Fresh from the oven', 'Baked today, while stock lasts.', menu.bakesImage, named(menu.bakes), renderItem),
         ...categorySections,
-      ].filter(Boolean); // drop empty sections
+      ].filter(Boolean);
 
       document.getElementById('menu').replaceChildren(...sections);
     }
-
-    // =========================================================
-    // Load the menu
-    // =========================================================
 
     fetch('/api/menu')
       .then(response => response.json())
@@ -147,7 +108,5 @@
         );
       });
   </script>
-
-
 </body>
 </html>
