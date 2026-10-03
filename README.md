@@ -13,5 +13,6 @@ The owner password is a Cloudflare secret, checked on the server. It is never in
 
 **url: sups-cafe-hackathon.pranay-patel0804.workers.dev
 **admin: sups-cafe-hackathon.pranay-patel0804.workers.dev/admin/
+**run after changes in terminal: npx wrangler dev
 
 Wrong passwords: 5 tries per 15 minutes per visitor, then locked out for a while.

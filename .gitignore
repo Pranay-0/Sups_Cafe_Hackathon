@@ -1,0 +1,4 @@
+.dev.vars
+wrangler.jsonc
+.wrangler/cache/cf.json
+wrangler.jsonc

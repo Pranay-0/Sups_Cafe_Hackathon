@@ -364,11 +364,17 @@
     const signOutBtn = el('button', {
       class: 'ghost',
       onclick: async () => {
-        await fetch('/api/logout', { method: 'POST' });
-        showLogin();
+        try {
+          await fetch('/api/logout', { method: 'POST' });
+        } catch (err) {
+          console.error('Logout request failed:', err);
+        } finally {
+          window.location.href = '/'; 
+        }
       },
     }, 'Sign out');
-    saveBtn.before(signOutBtn);
+
+    saveBtn.before(signOutBtn); 
 
     // On page load: if we already have a valid session, go straight to the editor.
     fetch('/api/session').then(response => response.ok ? loadMenu() : showLogin());
