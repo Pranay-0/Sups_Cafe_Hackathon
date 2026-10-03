@@ -46,13 +46,22 @@ header.top .brand{
   color:var(--cream);font-size:1.5rem;
 }
 header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4rem);letter-spacing:.01em}
-header.top p{margin:12px 0 0;color:rgba(244,239,230,.75);font-size:.95rem}
+header.top .tagline{margin:10px 0 0;color:var(--cream);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.3rem}
+header.top p{margin:12px 0 0;color:rgba(244,239,230,.8);font-size:.9rem}
+header.top #updated{display:inline-block;margin-top:18px;padding:4px 16px;border:1px solid rgba(244,239,230,.35);border-radius:99px}
 header.top p:empty{display:none}
+/* Awning-style scalloped edge along the bottom of the header */
+header.top{position:relative}
+header.top::after{
+  content:"";position:absolute;left:0;right:0;top:100%;height:12px;
+  background:radial-gradient(circle at 12px 0,var(--maroon) 11.5px,transparent 12px) 0 0/24px 12px repeat-x;
+}
 
 /* ---------- Menu: photo, then title, then the list ---------- */
 #menu.wrap{padding-bottom:24px}
 #menu>.note{padding:48px 0;text-align:center}
-#menu section{padding:48px 0 4px}
+#menu section{padding:44px 0 8px}
+#menu section+section{margin-top:12px}
 
 .section-photo{
   display:block;width:100%;aspect-ratio:16/10;   /* phones: roomy, food stays visible */
@@ -66,21 +75,21 @@ header.top p:empty{display:none}
 #menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
 #menu section>h2 .icon{font-size:.75em}
 #menu section>h2::after{content:"";flex:1;height:1px;background:var(--rule);margin-left:8px;transform:translateY(3px)}
-#menu section>.note{color:var(--muted);font-size:.92rem;margin:0 0 8px}
+#menu section>.note{color:var(--muted);font-family:'Cormorant Garamond',Georgia,serif;font-style:italic;font-size:1.2rem;margin:0 0 6px}
 
 #menu .items>div:not(.special){padding:4px 0 10px;border-bottom:1px solid var(--rule)}
 #menu .items>div:last-child{border-bottom:0}
 
 /* ---------- Price row: "Flat white ........ R38.00" ---------- */
 .row{display:flex;align-items:baseline;gap:8px;padding:10px 0 4px}
-.row .name{font-weight:600;font-size:1.02rem}
+.row .name{font-weight:600;font-size:1.05rem;letter-spacing:.005em}
 .row .dots{flex:1;min-width:16px;border-bottom:2px dotted var(--tan);transform:translateY(-4px)}
 .row .price{
   font-family:'Cormorant Garamond',Georgia,serif;
   font-weight:700;font-size:1.35rem;line-height:1;
   color:var(--maroon);font-variant-numeric:tabular-nums;
 }
-.desc{margin:0 0 8px;color:var(--muted);font-size:.92rem;max-width:46ch}
+.desc{margin:0 0 8px;color:var(--muted);font-size:.9rem;line-height:1.5;max-width:52ch}
 
 .tag{display:inline-block;font-size:.74rem;font-weight:600;background:var(--maroon);color:var(--cream);padding:2px 9px;border-radius:99px;margin-left:10px;vertical-align:2px}
 
@@ -89,10 +98,12 @@ header.top p:empty{display:none}
 .out-row .name .tag{text-decoration:none;display:inline-block}
 
 /* ---------- Today's specials: cream card, terracotta edge ---------- */
-.special{background:var(--cream);border:0;border-left:4px solid var(--terra);border-radius:6px;padding:10px 18px 12px;margin:8px 0 14px}
+.special{background:var(--cream);border:0;box-shadow:0 1px 3px rgba(94,27,29,.08);border-left:4px solid var(--terra);border-radius:6px;padding:10px 18px 12px;margin:8px 0 14px}
 .special .row{padding-top:6px}
 .special .row .name{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.35rem;font-weight:700;color:var(--maroon)}
 .special .desc{margin-bottom:4px}
+
+::selection{background:var(--terra);color:#fff}
 
 /* ---------- Footer: full-width charcoal band ---------- */
 footer{
@@ -106,7 +117,27 @@ footer{
 footer a{color:var(--cream);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s}
 footer a:hover,footer a:focus-visible{border-bottom-color:var(--tan)}
 
+/* ---------- Section tabs (normal row under the header) ---------- */
+html{scroll-padding-top:16px}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+.tabs{border-bottom:1px solid var(--rule)}
+.tabs .wrap{display:flex;gap:6px;overflow-x:auto;padding-top:26px;padding-bottom:12px;scrollbar-width:none}
+.tabs .wrap::-webkit-scrollbar{display:none}
+.tabs a{flex:none;padding:6px 15px;border-radius:99px;color:var(--maroon);font-weight:500;font-size:.92rem;text-decoration:none;white-space:nowrap;transition:background .15s,color .15s}
+.tabs a:first-child{margin-left:auto}.tabs a:last-child{margin-right:auto}
+.tabs a{background:var(--cream)}
+.tabs a:hover,.tabs a:focus-visible{background:var(--maroon);color:var(--cream)}
+
+/* ---------- Section photo with the title laid over it ---------- */
+.hero{position:relative;margin:0 0 18px;border-radius:8px;overflow:hidden;box-shadow:0 6px 18px -8px rgba(31,31,31,.35)}
+.hero .section-photo{margin:0;border-radius:0}
+.hero::after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(31,31,31,.75),rgba(31,31,31,0) 62%)}
+.hero h2{position:absolute;z-index:1;left:24px;right:24px;bottom:18px;margin:0;color:#fff;font-size:clamp(2rem,5vw,2.8rem);text-shadow:0 1px 12px rgba(0,0,0,.35)}
+.hero h2::after{display:none}
+.hero h2 .icon{color:var(--cream)}
+
 @media(max-width:560px){
+  .hero h2{left:16px;bottom:12px}
   header.top{padding:40px 0 34px}
   .row .price{font-size:1.2rem}
   footer{justify-content:center;text-align:center}
