@@ -1,47 +1,377 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">
-<title>Menu editor</title>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css"></head><body>
-<div class="bar"><div class="wrap"><h3>Menu editor</h3>
-<div style="display:flex;gap:16px;align-items:center"><span class="status" id="status"></span><button id="save"></button></div></div></div>
-<main class="wrap" id="app" style="padding-bottom:80px"></main>
-<script src="/app.js"></script>
-<script>
-let m;const app=document.getElementById('app'),st=document.getElementById('status'),sb=document.getElementById('save');
-sb.append(icon('save'),'Save changes');
-const inp=(o,k,ph,type='text')=>el('input',{type,placeholder:ph,value:o[k]??'',step:type==='number'?'0.5':null,min:type==='number'?'0':null,
-  oninput:e=>{o[k]=type==='number'?parseFloat(e.target.value)||0:e.target.value;dirty()}});
-const del=fn=>el('button',{class:'ghost icon-btn',title:'Remove',onclick:()=>{fn();draw()}},icon('trash'));
-const add=(label,fn)=>el('button',{class:'ghost',onclick:()=>{fn();draw()}},icon('plus'),label);
-const chk=(o,k,label)=>el('label',{class:'chk'},el('input',{type:'checkbox',checked:!!o[k],onchange:e=>{o[k]=e.target.checked;dirty()}}),label);
-function dirty(){st.className='status';st.textContent='Unsaved changes'}
-function draw(){app.replaceChildren(
- el('section',{},el('h2',{},'Cafe name'),el('div',{class:'card'},inp(m,'cafeName','Cafe name'))),
- el('section',{},el('h2',{},icon('star'),"Today's specials"),
-  el('div',{class:'card'},...m.specials.map((s,i)=>el('div',{class:'edit sp'},inp(s,'name','Special'),inp(s,'price','Price','number'),del(()=>m.specials.splice(i,1)),
-    el('div',{class:'full'},inp(s,'description','Short description (optional)')))),
-   add('Add special',()=>m.specials.push({name:'',price:0,description:''})))),
- el('section',{},el('h2',{},icon('sun'),'Daily bakes'),
-  el('div',{class:'card'},...m.bakes.map((b,i)=>el('div',{class:'edit'},inp(b,'name','Bake'),inp(b,'price','Price','number'),chk(b,'soldOut','Sold out'),del(()=>m.bakes.splice(i,1)))),
-   add('Add bake',()=>m.bakes.push({name:'',price:0,soldOut:false})))),
- ...m.categories.map((c,ci)=>el('section',{},el('div',{class:'card'},
-   el('div',{class:'cat-head'},inp(c,'name','Category name'),del(()=>m.categories.splice(ci,1))),
-   ...c.items.map((it,i)=>el('div',{class:'edit'},inp(it,'name','Item'),inp(it,'price','Price','number'),chk(it,'unavailable','Hide'),del(()=>c.items.splice(i,1)))),
-   add('Add item',()=>c.items.push({name:'',price:0,description:''}))))),
- el('section',{},add('Add category',()=>m.categories.push({name:'New category',items:[]}))))}
-sb.onclick=async()=>{st.className='status';st.textContent='Saving…';
- m.categories.forEach(c=>c.items.forEach(i=>i.available=!i.unavailable));
- try{const r=await fetch('/api/admin/menu',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify(m)});
-  if(!r.ok)throw new Error((await r.json()).error||'Error');st.textContent='Saved. The menu is live.'}
- catch(e){st.className='status err';st.textContent='Could not save: '+e.message;if(/sign in/i.test(e.message))login()}};
-function start(){sb.style.display='';fetch('/api/menu').then(r=>r.json()).then(d=>{m=d;m.specials??=[];m.bakes??=[];m.categories??=[];
- m.categories.forEach(c=>c.items.forEach(i=>i.unavailable=i.available===false));draw()})}
-function login(msg){sb.style.display='none';st.textContent='';let pw;
- const go=async()=>{const r=await fetch('/api/login',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({password:pw.value})});
-  if(r.ok)start();else login((await r.json()).error||'Could not sign in')};
- pw=el('input',{type:'password',placeholder:'Password',autocomplete:'current-password',onkeydown:e=>{if(e.key==='Enter')go()}});
- app.replaceChildren(el('section',{},el('h2',{},'Owner sign in'),el('div',{class:'card'},pw,el('div',{style:'margin-top:12px'},el('button',{onclick:go},'Sign in')),el('p',{class:'status err'},msg||''))));pw.focus()}
-const out=el('button',{class:'ghost',onclick:async()=>{await fetch('/api/logout',{method:'POST'});login()}},'Sign out');sb.before(out);
-fetch('/api/session').then(r=>r.ok?start():login());
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>Menu editor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <div class="bar">
+    <div class="wrap">
+      <h3>Menu editor</h3>
+      <div style="display:flex;gap:16px;align-items:center">
+        <span class="status" id="status"></span>
+        <button id="save"></button>
+      </div>
+    </div>
+  </div>
+
+  <main class="wrap" id="app" style="padding-bottom:80px"></main>
+
+  <script src="/app.js"></script>
+  <script>
+    // =========================================================
+    // State and page elements
+    // =========================================================
+
+    let menu; // the whole menu, loaded from the server and edited in place
+
+    const app       = document.getElementById('app');
+    const statusEl  = document.getElementById('status');
+    const saveBtn   = document.getElementById('save');
+
+    saveBtn.append(icon('save'), 'Save changes');
+
+    function setStatus(text, isError = false) {
+      statusEl.className = 'status' + (isError ? ' err' : '');
+      statusEl.textContent = text;
+    }
+
+    function markUnsaved() {
+      setStatus('Unsaved changes');
+    }
+
+    // =========================================================
+    // Form helpers. Each edits `obj[key]` directly as you type.
+    // =========================================================
+
+    function textInput(obj, key, placeholder) {
+      return el('input', {
+        type: 'text',
+        placeholder,
+        value: obj[key] ?? '',
+        oninput: e => { obj[key] = e.target.value; markUnsaved(); },
+      });
+    }
+
+    function numberInput(obj, key, placeholder) {
+      return el('input', {
+        type: 'number',
+        placeholder,
+        value: obj[key] ?? '',
+        step: '0.5',
+        min: '0',
+        oninput: e => { obj[key] = parseFloat(e.target.value) || 0; markUnsaved(); },
+      });
+    }
+
+    function checkbox(obj, key, label) {
+      return el('label', { class: 'chk' },
+        el('input', {
+          type: 'checkbox',
+          checked: !!obj[key],
+          onchange: e => { obj[key] = e.target.checked; markUnsaved(); },
+        }),
+        label
+      );
+    }
+
+    // Trash button. `removeFromList` should remove the thing from its array.
+    function removeButton(removeFromList) {
+      return el('button', {
+        class: 'ghost icon-btn',
+        title: 'Remove',
+        onclick: () => { removeFromList(); markUnsaved(); draw(); },
+      }, icon('trash'));
+    }
+
+    // "+ Add something" button. `addToList` should push a new object.
+    function addButton(label, addToList) {
+      return el('button', {
+        class: 'ghost',
+        onclick: () => { addToList(); markUnsaved(); draw(); },
+      }, icon('plus'), label);
+    }
+
+    // =========================================================
+    // Photos: shrink in the browser, upload, remember the id
+    // =========================================================
+
+    // Resize to max 900px and convert to JPEG so uploads stay small.
+    async function shrinkImage(file) {
+      const bitmap = await createImageBitmap(file);
+      const scale = Math.min(1, 900 / Math.max(bitmap.width, bitmap.height));
+
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+      const toJpeg = quality => new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+
+      let blob = await toJpeg(0.8);
+      if (blob.size > 550 * 1024) blob = await toJpeg(0.6); // still big? squeeze harder
+      return blob;
+    }
+
+    // Sends the photo to the server, returns the new image id.
+    async function uploadPhoto(file) {
+      const blob = await shrinkImage(file);
+      const response = await fetch('/api/admin/upload', {
+        method: 'POST',
+        headers: { 'content-type': 'image/jpeg' },
+        body: blob,
+      });
+      if (response.status === 401) throw new Error('Please sign in again');
+      if (!response.ok) throw new Error('upload failed');
+      return (await response.json()).id;
+    }
+
+    // The "Add photo" control shown on any item. `item.image` holds the id.
+    function photoPicker(item) {
+      const fileInput = el('input', {
+        type: 'file',
+        accept: 'image/*',
+        onchange: async e => {
+          const file = e.target.files[0];
+          if (!file) return;
+
+          setStatus('Uploading photo…');
+          try {
+            item.image = await uploadPhoto(file);
+            setStatus('Photo added. Remember to save changes.');
+            draw();
+          } catch (err) {
+            setStatus('Photo error: ' + err.message, true);
+            if (/sign in/i.test(err.message)) showLogin();
+          }
+        },
+      });
+
+      const removePhoto = el('button', {
+        class: 'ghost icon-btn',
+        title: 'Remove photo',
+        onclick: () => { item.image = ''; markUnsaved(); draw(); },
+      }, icon('trash'));
+
+      return el('div', { class: 'pic' },
+        item.image ? el('img', { src: '/api/img/' + item.image, alt: '' }) : null,
+        el('label', { class: 'btn' },
+          icon('image'),
+          item.image ? 'Change photo' : 'Add photo (optional)',
+          fileInput
+        ),
+        item.image ? removePhoto : null
+      );
+    }
+
+    // =========================================================
+    // The editor sections
+    // =========================================================
+
+    function cafeNameSection() {
+      return el('section', {},
+        el('h2', {}, 'Cafe name'),
+        el('div', { class: 'card' }, textInput(menu, 'cafeName', 'Cafe name'))
+      );
+    }
+
+    function specialsSection() {
+      const rows = menu.specials.map((special, index) =>
+        el('div', { class: 'edit sp' },
+          textInput(special, 'name', 'Special'),
+          numberInput(special, 'price', 'Price'),
+          removeButton(() => menu.specials.splice(index, 1)),
+          el('div', { class: 'full' }, textInput(special, 'description', 'Short description (optional)')),
+          el('div', { class: 'full' }, photoPicker(special))
+        )
+      );
+
+      return el('section', {},
+        el('h2', {}, icon('star'), "Today's specials"),
+        el('div', { class: 'card' },
+          ...rows,
+          addButton('Add special', () => menu.specials.push({ name: '', price: 0, description: '', image: '' }))
+        )
+      );
+    }
+
+    function bakesSection() {
+      const rows = menu.bakes.map((bake, index) =>
+        el('div', { class: 'edit' },
+          textInput(bake, 'name', 'Bake'),
+          numberInput(bake, 'price', 'Price'),
+          checkbox(bake, 'soldOut', 'Sold out'),
+          removeButton(() => menu.bakes.splice(index, 1)),
+          el('div', { class: 'full' }, photoPicker(bake))
+        )
+      );
+
+      return el('section', {},
+        el('h2', {}, icon('sun'), 'Daily bakes'),
+        el('div', { class: 'card' },
+          ...rows,
+          addButton('Add bake', () => menu.bakes.push({ name: '', price: 0, soldOut: false, image: '' }))
+        )
+      );
+    }
+
+    // One row inside a category: a normal item, or a photo on its own.
+    function categoryItemRow(category, item, index) {
+      const remove = removeButton(() => category.items.splice(index, 1));
+
+      if (item.photoOnly) {
+        return el('div', { class: 'edit solo' }, photoPicker(item), remove);
+      }
+
+      return el('div', { class: 'edit' },
+        textInput(item, 'name', 'Item'),
+        numberInput(item, 'price', 'Price'),
+        checkbox(item, 'unavailable', 'Hide'),
+        remove,
+        el('div', { class: 'full' }, photoPicker(item))
+      );
+    }
+
+    function categorySection(category, categoryIndex) {
+      return el('section', {},
+        el('div', { class: 'card' },
+          el('div', { class: 'cat-head' },
+            textInput(category, 'name', 'Category name'),
+            removeButton(() => menu.categories.splice(categoryIndex, 1))
+          ),
+          ...category.items.map((item, i) => categoryItemRow(category, item, i)),
+          el('div', { style: 'display:flex;gap:8px;flex-wrap:wrap' },
+            addButton('Add item', () =>
+              category.items.push({ name: '', price: 0, description: '', image: '' })),
+            addButton('Add photo', () =>
+              category.items.push({ name: '', price: 0, description: '', image: '', photoOnly: true }))
+          )
+        )
+      );
+    }
+
+    function addCategorySection() {
+      return el('section', {},
+        addButton('Add category', () => menu.categories.push({ name: 'New category', items: [] }))
+      );
+    }
+
+    // Rebuild the whole editor from the current `menu`.
+    function draw() {
+      app.replaceChildren(
+        cafeNameSection(),
+        specialsSection(),
+        bakesSection(),
+        ...menu.categories.map(categorySection),
+        addCategorySection()
+      );
+    }
+
+    // =========================================================
+    // Loading and saving
+    // =========================================================
+
+    function loadMenu() {
+      saveBtn.style.display = '';
+
+      fetch('/api/menu')
+        .then(response => response.json())
+        .then(data => {
+          menu = data;
+          menu.specials   ??= [];
+          menu.bakes      ??= [];
+          menu.categories ??= [];
+
+          // Editor-only flags (the server doesn't store these)
+          menu.categories.forEach(category => {
+            category.items.forEach(item => {
+              item.unavailable = item.available === false;
+              item.photoOnly   = !item.name && !!item.image;
+            });
+          });
+
+          draw();
+        });
+    }
+
+    async function saveMenu() {
+      setStatus('Saving…');
+
+      // Turn the "Hide" checkbox into the `available` field the server expects.
+      menu.categories.forEach(category => {
+        category.items.forEach(item => { item.available = !item.unavailable; });
+      });
+
+      try {
+        const response = await fetch('/api/admin/menu', {
+          method: 'PUT',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(menu),
+        });
+        if (!response.ok) throw new Error((await response.json()).error || 'Error');
+        setStatus('Saved. The menu is live.');
+      } catch (err) {
+        setStatus('Could not save: ' + err.message, true);
+        if (/sign in/i.test(err.message)) showLogin();
+      }
+    }
+
+    saveBtn.onclick = saveMenu;
+
+    // =========================================================
+    // Sign in / sign out
+    // =========================================================
+
+    function showLogin(message) {
+      saveBtn.style.display = 'none';
+      setStatus('');
+
+      const passwordInput = el('input', {
+        type: 'password',
+        placeholder: 'Password',
+        autocomplete: 'current-password',
+        onkeydown: e => { if (e.key === 'Enter') submit(); },
+      });
+
+      async function submit() {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ password: passwordInput.value }),
+        });
+        if (response.ok) loadMenu();
+        else showLogin((await response.json()).error || 'Could not sign in');
+      }
+
+      app.replaceChildren(
+        el('section', {},
+          el('h2', {}, 'Owner sign in'),
+          el('div', { class: 'card' },
+            passwordInput,
+            el('div', { style: 'margin-top:12px' }, el('button', { onclick: submit }, 'Sign in')),
+            el('p', { class: 'status err' }, message || '')
+          )
+        )
+      );
+      passwordInput.focus();
+    }
+
+    const signOutBtn = el('button', {
+      class: 'ghost',
+      onclick: async () => {
+        await fetch('/api/logout', { method: 'POST' });
+        showLogin();
+      },
+    }, 'Sign out');
+    saveBtn.before(signOutBtn);
+
+    // On page load: if we already have a valid session, go straight to the editor.
+    fetch('/api/session').then(response => response.ok ? loadMenu() : showLogin());
+  </script>
+</body>
+</html>

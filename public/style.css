@@ -8,6 +8,11 @@ h1{font-size:clamp(2.2rem,6vw,3.4rem)}h2{font-size:1.9rem}
 header.top{border-bottom:1px solid var(--line);padding:48px 0 28px}
 header.top .brand{display:flex;gap:12px;align-items:center;color:var(--terra)}
 header.top p{margin:6px 0 0;color:#5a5a5a}
+.photo{display:block;width:100%;max-height:320px;object-fit:cover;border-radius:var(--r);margin:4px 0 12px}
+.pic{display:flex;gap:10px;align-items:center}
+.pic img{width:64px;height:64px;object-fit:cover;border-radius:var(--r)}
+.pic input[type=file]{display:none}
+.pic .btn{cursor:pointer;background:transparent;color:var(--terra)}
 section{padding:36px 0 8px}
 section>h2{display:flex;gap:10px;align-items:center;margin-bottom:6px}
 section>h2 .icon{color:var(--terra)}

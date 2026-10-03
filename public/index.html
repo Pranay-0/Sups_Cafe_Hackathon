@@ -1,27 +1,147 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>SUP's Cafe | Menu</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css"></head><body>
-<header class="top"><div class="wrap">
-<div class="brand" id="brand"></div>
-<h1 id="title">SUP's Cafe</h1><p id="updated"></p></div></header>
-<main class="wrap" id="menu"><p class="note">Loading menu…</p></main>
-<footer class="wrap">Prices and availability change daily.</footer>
-<script src="/app.js"></script>
-<script>
-const row=i=>el('div',{class:'row'+(i.available===false||i.soldOut?' out-row':'')},
-  el('span',{class:'name'},i.name,i.soldOut?el('span',{class:'tag out'},'Sold out'):null),
-  el('span',{class:'dots'}),el('span',{class:'price'},money(i.price)));
-const block=(ic,title,note,items,fn)=>items.length?el('section',{},el('h2',{},icon(ic),title),note?el('p',{class:'note'},note):null,...items.map(fn)):null;
-fetch('/api/menu').then(r=>r.json()).then(m=>{
-  document.getElementById('brand').append(icon('coffee'));
-  document.getElementById('title').textContent=m.cafeName||"SUP's Cafe";
-  if(m.updated)document.getElementById('updated').textContent='Updated '+new Date(m.updated).toLocaleDateString('en-ZA',{weekday:'long',day:'numeric',month:'long'});
-  const main=document.getElementById('menu');main.replaceChildren(
-    block('star',"Today's specials",null,m.specials||[],s=>el('div',{class:'special'},row(s),s.description?el('p',{class:'desc'},s.description):null)),
-    block('sun','Fresh from the oven','Baked today, while stock lasts.',m.bakes||[],row),
-    ...(m.categories||[]).map(c=>block('list',c.name,null,c.items.filter(i=>i.name),i=>el('div',{},row(i),i.description?el('p',{class:'desc'},i.description):null))));
-}).catch(()=>document.getElementById('menu').replaceChildren(el('p',{class:'note'},'The menu could not be loaded. Please refresh.')));
-</script></body></html>
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>SUP's Cafe | Menu</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+
+  <header class="top">
+    <div class="wrap">
+      <div class="brand" id="brand"></div>
+      <h1 id="title">SUP's Cafe</h1>
+      <p id="updated"></p>
+    </div>
+  </header>
+
+  <main class="wrap" id="menu">
+    <p class="note">Loading menu…</p>
+  </main>
+
+  <footer class="wrap">Prices and availability change daily.</footer>
+
+  <script src="/app.js"></script>
+  <script>
+    // =========================================================
+    // Small building blocks (each one returns a DOM element)
+    // =========================================================
+
+    // An optional photo. Returns nothing if the item has no image.
+    function photo(item) {
+      if (!item.image) return null;
+      return el('img', {
+        class: 'photo',
+        src: '/api/img/' + item.image,
+        alt: item.name || 'Menu photo',
+        loading: 'lazy',
+      });
+    }
+
+    // "Flat white ........ R38.00", greyed out if sold out / hidden.
+    function priceRow(item) {
+      const isOut = item.available === false || item.soldOut;
+      return el('div', { class: 'row' + (isOut ? ' out-row' : '') },
+        el('span', { class: 'name' },
+          item.name,
+          item.soldOut ? el('span', { class: 'tag out' }, 'Sold out') : null
+        ),
+        el('span', { class: 'dots' }),
+        el('span', { class: 'price' }, money(item.price))
+      );
+    }
+
+    // Optional short description under a row.
+    function description(item) {
+      return item.description ? el('p', { class: 'desc' }, item.description) : null;
+    }
+
+    // A titled section. Returns nothing if there are no items.
+    function menuSection(iconName, title, note, items, renderItem) {
+      if (items.length === 0) return null;
+      return el('section', {},
+        el('h2', {}, icon(iconName), title),
+        note ? el('p', { class: 'note' }, note) : null,
+        ...items.map(renderItem)
+      );
+    }
+
+    // =========================================================
+    // How each kind of item is displayed
+    // =========================================================
+
+    function renderSpecial(special) {
+      return el('div', { class: 'special' },
+        priceRow(special),
+        description(special),
+        photo(special)
+      );
+    }
+
+    function renderBake(bake) {
+      return el('div', {},
+        priceRow(bake),
+        photo(bake)
+      );
+    }
+
+    function renderCategoryItem(item) {
+      // No name = a standalone photo placed in the category.
+      if (!item.name) return photo(item);
+
+      return el('div', {},
+        priceRow(item),
+        description(item),
+        photo(item)
+      );
+    }
+
+    // =========================================================
+    // Put the whole menu on the page
+    // =========================================================
+
+    function renderMenu(menu) {
+      document.getElementById('brand').append(icon('coffee'));
+      document.getElementById('title').textContent = menu.cafeName || "SUP's Cafe";
+
+      if (menu.updated) {
+        const date = new Date(menu.updated).toLocaleDateString('en-ZA', {
+          weekday: 'long', day: 'numeric', month: 'long',
+        });
+        document.getElementById('updated').textContent = 'Updated ' + date;
+      }
+
+      const categorySections = (menu.categories || []).map(category => {
+        // Keep items that have a name OR a photo.
+        const items = category.items.filter(i => i.name || i.image);
+        return menuSection('list', category.name, null, items, renderCategoryItem);
+      });
+
+      const sections = [
+        menuSection('star', "Today's specials", null, menu.specials || [], renderSpecial),
+        menuSection('sun', 'Fresh from the oven', 'Baked today, while stock lasts.', menu.bakes || [], renderBake),
+        ...categorySections,
+      ].filter(Boolean); // drop empty sections
+
+      document.getElementById('menu').replaceChildren(...sections);
+    }
+
+    // =========================================================
+    // Load the menu
+    // =========================================================
+
+    fetch('/api/menu')
+      .then(response => response.json())
+      .then(renderMenu)
+      .catch(() => {
+        document.getElementById('menu').replaceChildren(
+          el('p', { class: 'note' }, 'The menu could not be loaded. Please refresh.')
+        );
+      });
+  </script>
+</body>
+</html>
