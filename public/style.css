@@ -1,22 +1,21 @@
 /* =========================================================
    SUP's Cafe: stylesheet
    Part 1: shared basics
-   Part 2: PUBLIC PAGE (redesigned; everything scoped to
-           header.top, #menu or footer)
+   Part 2: PUBLIC PAGE (scoped to header.top, #menu, footer)
    Part 3: ADMIN (unchanged from the original)
 
-   Palette
-   --terra  #C85A37  icons, accents
-   --maroon #5E1B1D  header, headings, prices
-   --tan    #C89B6D  rules, borders, leader dots
-   --gold   #C68640  highlights (decorative only)
-   --cream  #F4EFE6  page background
-   --char   #1F1F1F  body text, footer
-   --green  #4A6741  "fresh today" accents
+   Colour roles (kept deliberately simple)
+   White  #FFFFFF  public page background
+   Cream  #F4EFE6  special cards, admin background
+   Maroon #5E1B1D  header band, headings, prices
+   Char   #1F1F1F  body text, footer band
+   Terra  #C85A37  the one accent: small icons, special-card edge
+   Tan    #C89B6D  hairlines and leader dots only
+   (Gold #C68640 and Green #4A6741 are only used by the admin)
    ========================================================= */
 
 :root{--cream:#F4EFE6;--maroon:#5E1B1D;--char:#1F1F1F;--terra:#C85A37;--gold:#C68640;--green:#4A6741;--tan:#C89B6D;--line:#DDD3C2;--r:4px;
-  --paper:#FBF8F2;--rule:rgba(200,155,109,.45);--muted:#6b5f55}
+  --rule:rgba(200,155,109,.4);--muted:#6b5f55}
 
 /* ---------- 1. Shared basics ---------- */
 *{box-sizing:border-box}
@@ -35,42 +34,40 @@ section>h2 .icon{color:var(--terra)}
    2. PUBLIC PAGE
    ========================================================= */
 
-/* ---------- Header: maroon band, centred ---------- */
-header.top{
-  background:radial-gradient(120% 140% at 50% 0%,#74262a 0%,var(--maroon) 55%,#4a1416 100%);
-  border-bottom:5px solid var(--gold);
-  padding:56px 0 44px;
-  text-align:center;
-  color:var(--cream);
-}
+/* Public page sits on white (the admin keeps its cream) */
+body:has(#menu){background:#fff}
+
+/* ---------- Header: flat maroon band ---------- */
+header.top{background:var(--maroon);padding:52px 0 42px;text-align:center}
 header.top .brand{
   display:flex;justify-content:center;align-items:center;
-  width:64px;height:64px;margin:0 auto 18px;
-  border:1.5px solid var(--tan);border-radius:50%;
-  color:var(--tan);font-size:1.6rem;
+  width:60px;height:60px;margin:0 auto 16px;
+  border:1.5px solid rgba(244,239,230,.5);border-radius:50%;
+  color:var(--cream);font-size:1.5rem;
 }
-header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4.2rem);letter-spacing:.01em}
-header.top p{margin:14px 0 0;color:var(--tan);font-size:.95rem;letter-spacing:.02em}
+header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4rem);letter-spacing:.01em}
+header.top p{margin:12px 0 0;color:rgba(244,239,230,.75);font-size:.95rem}
 header.top p:empty{display:none}
 
-/* ---------- Menu layout: title, one photo, then the list ---------- */
+/* ---------- Menu: photo, then title, then the list ---------- */
 #menu.wrap{padding-bottom:24px}
 #menu>.note{padding:48px 0;text-align:center}
+#menu section{padding:48px 0 4px}
 
-#menu section{padding:52px 0 8px}
-
-/* Section title: icon, name, then a tan rule out to the edge */
-#menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
-#menu section>h2 .icon{font-size:.8em}
-#menu section>h2::after{
-  content:"";flex:1;height:1px;background:var(--tan);
-  margin-left:8px;transform:translateY(3px);
+.section-photo{
+  display:block;width:100%;aspect-ratio:16/10;   /* phones: roomy, food stays visible */
+  object-fit:cover;object-position:center 40%;
+  border-radius:6px;margin:0 0 22px;background:var(--rule);
+}
+@media(min-width:600px){
+  .section-photo{aspect-ratio:21/9}               /* wider screens: slim banner, ~300px tall */
 }
 
-/* The only section with a note is "Fresh from the oven" */
-#menu section>.note{color:var(--green);font-weight:500;font-size:.92rem;margin:0 0 10px}
+#menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
+#menu section>h2 .icon{font-size:.75em}
+#menu section>h2::after{content:"";flex:1;height:1px;background:var(--rule);margin-left:8px;transform:translateY(3px)}
+#menu section>.note{color:var(--muted);font-size:.92rem;margin:0 0 8px}
 
-/* Each item is a grid cell with a hairline underneath */
 #menu .items>div:not(.special){padding:4px 0 10px;border-bottom:1px solid var(--rule)}
 #menu .items>div:last-child{border-bottom:0}
 
@@ -85,45 +82,29 @@ header.top p:empty{display:none}
 }
 .desc{margin:0 0 8px;color:var(--muted);font-size:.92rem;max-width:46ch}
 
-.tag{
-  display:inline-block;font-size:.74rem;font-weight:600;
-  background:var(--green);color:#fff;
-  padding:2px 9px;border-radius:99px;margin-left:10px;vertical-align:2px;
-}
-.tag.out{background:var(--maroon);color:var(--cream)}
+.tag{display:inline-block;font-size:.74rem;font-weight:600;background:var(--maroon);color:var(--cream);padding:2px 9px;border-radius:99px;margin-left:10px;vertical-align:2px}
 
 /* Sold out: struck through and faded, tag stays readable */
 .out-row .name,.out-row .price{text-decoration:line-through;opacity:.5}
 .out-row .name .tag{text-decoration:none;display:inline-block}
 
-/* ---------- The one photo per section ---------- */
-.section-photo{
-  display:block;width:100%;aspect-ratio:16/8;
-  object-fit:cover;border-radius:6px;margin:14px 0 16px;background:var(--rule);
-}
-
-/* ---------- Today's specials ---------- */
-.special{
-  background:var(--paper);
-  border:1px solid var(--rule);border-left:5px solid var(--terra);
-  border-radius:6px;padding:12px 18px 14px;margin:6px 0 16px;
-}
+/* ---------- Today's specials: cream card, terracotta edge ---------- */
+.special{background:var(--cream);border:0;border-left:4px solid var(--terra);border-radius:6px;padding:10px 18px 12px;margin:8px 0 14px}
 .special .row{padding-top:6px}
 .special .row .name{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.35rem;font-weight:700;color:var(--maroon)}
-.special .desc{margin-bottom:6px}
+.special .desc{margin-bottom:4px}
 
-/* ---------- Footer: full-width charcoal band (copyright + admin link) ---------- */
+/* ---------- Footer: full-width charcoal band ---------- */
 footer{
-  margin-top:64px;padding:50px 20px 36px;
+  margin-top:64px;padding:34px 20px;
   display:flex;flex-wrap:wrap;gap:8px 24px;
   justify-content:space-between;align-items:center;
-  color:var(--tan);font-size:.9rem;
-  background:linear-gradient(var(--gold),var(--gold)) center 22px/48px 2px no-repeat var(--char);
-  border-top:4px solid var(--terra);
+  color:rgba(244,239,230,.7);font-size:.9rem;
+  background:var(--char);
   box-shadow:0 0 0 100vmax var(--char);clip-path:inset(0 -100vmax);
 }
-footer a{color:var(--tan);text-decoration:none;border-bottom:1px solid transparent;transition:color .15s,border-color .15s}
-footer a:hover,footer a:focus-visible{color:var(--cream);border-bottom-color:var(--gold)}
+footer a{color:var(--cream);text-decoration:none;border-bottom:1px solid transparent;transition:border-color .15s}
+footer a:hover,footer a:focus-visible{border-bottom-color:var(--tan)}
 
 @media(max-width:560px){
   header.top{padding:40px 0 34px}
