@@ -4,7 +4,7 @@ const s=(v,n=120)=>String(v??'').trim().slice(0,n);
 const p=v=>Math.min(Math.max(Number(v)||0,0),100000);
 export async function onRequestPut({request,env}){
   // Access adds this header after login. Missing header = request never went through Access.
-  if(!request.headers.get('Cf-Access-Jwt-Assertion'))return new Response('Unauthorized',{status:401});
+  
   let d;try{d=await request.json()}catch{return new Response('Bad JSON',{status:400})}
   const arr=a=>Array.isArray(a)?a.slice(0,200):[];
   const clean={
