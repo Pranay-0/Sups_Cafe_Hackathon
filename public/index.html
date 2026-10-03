@@ -85,14 +85,17 @@
       }
 
       const named = list => (list || []).filter(i => i.name);
+      // Use the section's own photo; if none is set yet, fall back to the
+      // first photo found on one of its items (menus saved before this change).
+      const pick = (id, list) => id || ((list || []).find(i => i.image) || {}).image || '';
 
       const categorySections = (menu.categories || []).map(category =>
-        menuSection('list', category.name, null, category.image, named(category.items), renderItem)
+        menuSection('list', category.name, null, pick(category.image, category.items), named(category.items), renderItem)
       );
 
       const sections = [
-        menuSection('star', "Today's specials", null, menu.specialsImage, named(menu.specials), renderSpecial),
-        menuSection('sun', 'Fresh from the oven', 'Baked today, while stock lasts.', menu.bakesImage, named(menu.bakes), renderItem),
+        menuSection('star', "Today's specials", null, pick(menu.specialsImage, menu.specials), named(menu.specials), renderSpecial),
+        menuSection('sun', 'Fresh from the oven', 'Baked today, while stock lasts.', pick(menu.bakesImage, menu.bakes), named(menu.bakes), renderItem),
         ...categorySections,
       ].filter(Boolean);
 
