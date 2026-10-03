@@ -26,7 +26,7 @@ section>h2 .icon{color:var(--terra)}
 .tag.out{background:#8a8272}
 .out-row .name,.out-row .price{text-decoration:line-through;opacity:.55}
 .special{border-left:3px solid var(--gold);padding-left:14px;margin:6px 0 12px}
-footer{padding:40px 0 60px;color:#6a6a6a;font-size:.85rem}
+footer{padding:40px 0 60px;color:#6a6a6a;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;}
 /* admin */
 button,.btn{font:inherit;cursor:pointer;display:inline-flex;gap:8px;align-items:center;border:1px solid var(--terra);background:var(--terra);color:#fff;padding:8px 16px;border-radius:var(--r);transition:background .15s,border-color .15s}
 button:hover{background:var(--gold);border-color:var(--gold)}
