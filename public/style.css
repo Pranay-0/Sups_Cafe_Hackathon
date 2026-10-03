@@ -1,57 +1,153 @@
-:root{--cream:#F4EFE6;--maroon:#5E1B1D;--char:#1F1F1F;--terra:#C85A37;--gold:#C68640;--green:#4A6741;--line:#DDD3C2;--r:4px}
+/* =========================================================
+   SUP's Cafe: stylesheet
+   Part 1: shared basics
+   Part 2: PUBLIC PAGE (redesigned; everything scoped to
+           header.top, #menu or footer)
+   Part 3: ADMIN (unchanged from the original)
+
+   Palette
+   --terra  #C85A37  icons, accents
+   --maroon #5E1B1D  header, headings, prices
+   --tan    #C89B6D  rules, borders, leader dots
+   --gold   #C68640  highlights (decorative only)
+   --cream  #F4EFE6  page background
+   --char   #1F1F1F  body text, footer
+   --green  #4A6741  "fresh today" accents
+   ========================================================= */
+
+:root{--cream:#F4EFE6;--maroon:#5E1B1D;--char:#1F1F1F;--terra:#C85A37;--gold:#C68640;--green:#4A6741;--tan:#C89B6D;--line:#DDD3C2;--r:4px;
+  --paper:#FBF8F2;--rule:rgba(200,155,109,.45);--muted:#6b5f55}
+
+/* ---------- 1. Shared basics ---------- */
 *{box-sizing:border-box}
-body{margin:0;background:var(--cream);color:var(--char);font:16px/1.6 'Inter',system-ui,sans-serif}
+body{margin:0;background:var(--cream);color:var(--char);font:16px/1.6 'Inter',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
 h1,h2,h3{font-family:'Cormorant Garamond',Georgia,serif;color:var(--maroon);margin:0;font-weight:600;line-height:1.15}
 h1{font-size:clamp(2.2rem,6vw,3.4rem)}h2{font-size:1.9rem}
 .icon{width:1.1em;height:1.1em;vertical-align:-.15em;flex:none}
 .wrap{max-width:760px;margin:0 auto;padding:0 20px}
-header.top{border-bottom:1px solid var(--line);padding:48px 0 28px}
-header.top .brand{display:flex;gap:12px;align-items:center;color:var(--terra)}
-header.top p{margin:6px 0 0;color:#5a5a5a}
-.photo{display:block;width:100%;max-height:320px;object-fit:cover;border-radius:var(--r);margin:4px 0 12px}
-.pic{display:flex;gap:10px;align-items:center}
-.pic img{width:64px;height:64px;object-fit:cover;border-radius:var(--r)}
-.pic input[type=file]{display:none}
-.pic .btn{cursor:pointer;background:transparent;color:var(--terra)}
 section{padding:36px 0 8px}
 section>h2{display:flex;gap:10px;align-items:center;margin-bottom:6px}
 section>h2 .icon{color:var(--terra)}
 .note{color:#6a6a6a;font-size:.9rem;margin:0 0 14px}
-.row{display:flex;align-items:baseline;gap:8px;padding:10px 0}
-.row .name{font-weight:500}
-.row .dots{flex:1;border-bottom:1px dotted #b9ad98;transform:translateY(-4px)}
-.row .price{font-weight:600;color:var(--maroon);font-variant-numeric:tabular-nums}
-.desc{margin:-6px 0 6px;color:#5a5a5a;font-size:.92rem}
-.tag{font-size:.78rem;background:var(--green);color:#fff;padding:1px 8px;border-radius:var(--r);margin-left:8px}
-.tag.out{background:#8a8272}
-.out-row .name,.out-row .price{text-decoration:line-through;opacity:.55}
-.special{border-left:3px solid var(--gold);padding-left:14px;margin:6px 0 12px}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 
+/* =========================================================
+   2. PUBLIC PAGE
+   ========================================================= */
+
+/* ---------- Header: maroon band, centred ---------- */
+header.top{
+  background:radial-gradient(120% 140% at 50% 0%,#74262a 0%,var(--maroon) 55%,#4a1416 100%);
+  border-bottom:5px solid var(--gold);
+  padding:56px 0 44px;
+  text-align:center;
+  color:var(--cream);
+}
+header.top .brand{
+  display:flex;justify-content:center;align-items:center;
+  width:64px;height:64px;margin:0 auto 18px;
+  border:1.5px solid var(--tan);border-radius:50%;
+  color:var(--tan);font-size:1.6rem;
+}
+header.top h1{color:var(--cream);font-weight:700;font-size:clamp(2.6rem,7vw,4.2rem);letter-spacing:.01em}
+header.top p{margin:14px 0 0;color:var(--tan);font-size:.95rem;letter-spacing:.02em}
+header.top p:empty{display:none}
+
+/* ---------- Menu layout: 1 column on phones, 2 on desktop ---------- */
+#menu.wrap{max-width:1040px;padding-bottom:24px}
+#menu>.note{padding:48px 0;text-align:center}
+
+#menu section{
+  display:grid;
+  grid-template-columns:1fr;
+  column-gap:56px;
+  align-items:start;
+  padding:52px 0 8px;
+}
+@media(min-width:800px){#menu section{grid-template-columns:1fr 1fr}}
+
+/* Section title: icon, name, then a tan rule out to the edge */
+#menu section>h2,
+#menu section>.note{grid-column:1/-1}
+#menu section>h2{font-size:clamp(1.8rem,4vw,2.3rem);font-weight:700;gap:12px}
+#menu section>h2 .icon{font-size:.8em}
+#menu section>h2::after{
+  content:"";flex:1;height:1px;background:var(--tan);
+  margin-left:8px;transform:translateY(3px);
+}
+
+/* The only section with a note is "Fresh from the oven" */
+#menu section>.note{color:var(--green);font-weight:500;font-size:.92rem;margin:0 0 10px}
+
+/* Each item is a grid cell with a hairline underneath */
+#menu section>div:not(.special){padding:6px 0 10px;border-bottom:1px solid var(--rule)}
+
+/* ---------- Price row: "Flat white ........ R38.00" ---------- */
+.row{display:flex;align-items:baseline;gap:8px;padding:10px 0 4px}
+.row .name{font-weight:600;font-size:1.02rem}
+.row .dots{flex:1;min-width:16px;border-bottom:2px dotted var(--tan);transform:translateY(-4px)}
+.row .price{
+  font-family:'Cormorant Garamond',Georgia,serif;
+  font-weight:700;font-size:1.35rem;line-height:1;
+  color:var(--maroon);font-variant-numeric:tabular-nums;
+}
+.desc{margin:0 0 8px;color:var(--muted);font-size:.92rem;max-width:46ch}
+
+.tag{
+  display:inline-block;font-size:.74rem;font-weight:600;
+  background:var(--green);color:#fff;
+  padding:2px 9px;border-radius:99px;margin-left:10px;vertical-align:2px;
+}
+.tag.out{background:var(--maroon);color:var(--cream)}
+
+/* Sold out: struck through and faded, tag stays readable */
+.out-row .name,.out-row .price{text-decoration:line-through;opacity:.5}
+.out-row .name .tag{text-decoration:none;display:inline-block}
+
+/* ---------- Photos ---------- */
+.photo{
+  display:block;width:100%;aspect-ratio:4/3;max-height:340px;
+  object-fit:cover;border-radius:6px;margin:8px 0 6px;background:var(--rule);
+}
+#menu section>.photo{margin:0 0 10px}
+
+/* ---------- Today's specials ---------- */
+.special{
+  background:var(--paper);
+  border:1px solid var(--rule);border-left:5px solid var(--terra);
+  border-radius:6px;padding:12px 18px 14px;margin:6px 0 16px;
+}
+.special .row{padding-top:6px}
+.special .row .name{font-family:'Cormorant Garamond',Georgia,serif;font-size:1.35rem;font-weight:700;color:var(--maroon)}
+.special .desc{margin-bottom:6px}
+.special .photo{margin:10px 0 2px}
+
+/* ---------- Footer: full-width charcoal band ---------- */
 footer{
-    padding:40px 0 60px;
-    color:#6a6a6a;
-    font-size:.85rem;
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
+  margin-top:64px;padding:34px 20px 40px;text-align:center;
+  color:var(--tan);font-size:.9rem;
+  background:var(--char);border-top:4px solid var(--terra);
+  box-shadow:0 0 0 100vmax var(--char);clip-path:inset(0 -100vmax);
+}
+footer::before{content:"";display:block;width:48px;height:2px;margin:0 auto 16px;background:var(--gold)}
+
+@media(max-width:560px){
+  header.top{padding:40px 0 34px}
+  .row .price{font-size:1.2rem}
 }
 
-footer a {
-  color: inherit;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-footer a:hover {
-  color: var(--terra);
-}
-/* admin */
+/* =========================================================
+   3. ADMIN (original rules, untouched)
+   ========================================================= */
+.pic{display:flex;gap:10px;align-items:center}
+.pic img{width:64px;height:64px;object-fit:cover;border-radius:var(--r)}
+.pic input[type=file]{display:none}
+.pic .btn{cursor:pointer;background:transparent;color:var(--terra)}
 button,.btn{font:inherit;cursor:pointer;display:inline-flex;gap:8px;align-items:center;border:1px solid var(--terra);background:var(--terra);color:#fff;padding:8px 16px;border-radius:var(--r);transition:background .15s,border-color .15s}
 button:hover{background:var(--gold);border-color:var(--gold)}
 button.ghost{background:transparent;color:var(--terra)}
 button.ghost:hover{background:var(--gold);color:#fff}
 button.icon-btn{padding:8px}
-:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
 input[type=text],input[type=number],textarea{font:inherit;width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r);background:#fff;color:var(--char)}
 input:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold)}
 .bar{position:sticky;top:0;z-index:5;background:var(--cream);border-bottom:1px solid var(--line);padding:12px 0}

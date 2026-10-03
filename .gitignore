@@ -2,3 +2,5 @@
 wrangler.jsonc
 .wrangler/cache/cf.json
 wrangler.jsonc
+.dev.vars
+.wrangler/
