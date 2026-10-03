@@ -327,16 +327,39 @@
     // Sign in / sign out
     // =========================================================
 
-    function showLogin(message) {
+function showLogin(message) {
       saveBtn.style.display = 'none';
       setStatus('');
 
       const passwordInput = el('input', {
         type: 'password',
+        class: 'login-input', 
         placeholder: 'Password',
         autocomplete: 'current-password',
+        style: 'flex: 1;', // Ensures the input takes up the remaining horizontal space
         onkeydown: e => { if (e.key === 'Enter') submit(); },
       });
+
+      // Create the toggle button
+      const toggleBtn = el('button', {
+        class: 'ghost',
+        style: 'white-space: nowrap;',
+        onclick: () => {
+          if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            toggleBtn.textContent = 'Hide';
+          } else {
+            passwordInput.type = 'password';
+            toggleBtn.textContent = 'Show';
+          }
+        }
+      }, 'Show');
+
+      // Wrap the input and button in a flexbox container
+      const passwordWrapper = el('div', { style: 'display: flex; gap: 8px; width: 100%;' }, 
+        passwordInput, 
+        toggleBtn
+      );
 
       async function submit() {
         const response = await fetch('/api/login', {
@@ -352,7 +375,7 @@
         el('section', {},
           el('h2', {}, 'Owner sign in'),
           el('div', { class: 'card' },
-            passwordInput,
+            passwordWrapper, // Place the wrapper here instead of the raw input
             el('div', { style: 'margin-top:12px' }, el('button', { onclick: submit }, 'Sign in')),
             el('p', { class: 'status err' }, message || '')
           )
