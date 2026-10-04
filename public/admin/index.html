@@ -222,7 +222,7 @@
 
     // One item row inside a category (photos now live on the section, not the item).
     function categoryItemRow(category, item, index) {
-      return el('div', { class: 'edit sp' },
+      return el('div', { class: 'edit' },
         textInput(item, 'name', 'Item'),
         numberInput(item, 'price', 'Price'),
         checkbox(item, 'unavailable', 'Hide'),
@@ -269,6 +269,7 @@
 
     function loadMenu() {
       saveBtn.style.display = '';
+      signOutBtn.style.display = '';
 
       fetch('/api/menu')
         .then(response => response.json())
@@ -323,6 +324,7 @@
 
     function showLogin(message) {
       saveBtn.style.display = 'none';
+      signOutBtn.style.display = 'none';
       setStatus('');
 
       const passwordInput = el('input', {
@@ -331,6 +333,20 @@
         autocomplete: 'current-password',
         onkeydown: e => { if (e.key === 'Enter') submit(); },
       });
+
+      const eyeBtn = el('button', {
+        type: 'button',
+        class: 'eye',
+        title: 'Show password',
+        'aria-label': 'Show password',
+        onclick: () => {
+          const show = passwordInput.type === 'password';
+          passwordInput.type = show ? 'text' : 'password';
+          eyeBtn.replaceChildren(icon(show ? 'eyeoff' : 'eye'));
+          eyeBtn.title = eyeBtn.ariaLabel = show ? 'Hide password' : 'Show password';
+          passwordInput.focus();
+        },
+      }, icon('eye'));
 
       async function submit() {
         const response = await fetch('/api/login', {
@@ -343,12 +359,14 @@
       }
 
       app.replaceChildren(
-        el('section', {},
-          el('h2', {}, 'Owner sign in'),
-          el('div', { class: 'card' },
-            passwordInput,
-            el('div', { style: 'margin-top:12px' }, el('button', { onclick: submit }, 'Sign in')),
-            el('p', { class: 'status err' }, message || '')
+        el('section', { class: 'login' },
+          el('div', { class: 'card login-card' },
+            el('div', { class: 'login-badge' }, icon('lock')),
+            el('h2', {}, 'Owner sign in'),
+            el('p', { class: 'login-sub' }, 'Enter your password to edit the menu.'),
+            el('div', { class: 'pw' }, passwordInput, eyeBtn),
+            el('button', { class: 'login-btn', onclick: submit }, 'Sign in'),
+            el('p', { class: 'status err login-err' }, message || '')
           )
         )
       );

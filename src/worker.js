@@ -72,6 +72,10 @@ function cleanMenu(data) {
     cafeName: cleanText(data.cafeName, 60) || "SUP's Cafe",
     updated: new Date().toISOString(),
 
+    // Section photos (these were being dropped on save)
+    specialsImage: cleanImage(data.specialsImage),
+    bakesImage: cleanImage(data.bakesImage),
+
     specials: cleanList(data.specials)
       .map(x => ({
         name: cleanText(x.name),
@@ -93,6 +97,7 @@ function cleanMenu(data) {
     categories: cleanList(data.categories).slice(0, 30)
       .map(c => ({
         name: cleanText(c.name, 60),
+        image: cleanImage(c.image),
         items: cleanList(c.items)
           .map(i => ({
             name: cleanText(i.name),
