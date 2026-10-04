@@ -33,7 +33,7 @@
       maxPrice: 100000,
       specials: 50, bakes: 50, categories: 30, items: 100,
       photoInputMB: 15,        // biggest photo we'll even try to open
-      photoMinWidth: 600,      // smaller than this looks blurry on the menu
+      photoMinWidth: 100,      // smaller than this looks blurry on the menu
       photoMaxBytes: 550 * 1024, // after shrinking (server allows 600 KB)
     };
     const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
@@ -583,7 +583,8 @@
             el('p', { class: 'login-sub' }, 'Enter your password to edit the menu.'),
             el('div', { class: 'pw' }, passwordInput, eyeBtn),
             signInBtn,
-            errorEl
+            errorEl,
+            el('a', { class: 'login-back', href: '/' }, icon('back'), 'Back to public menu')
           )
         )
       );
