@@ -25,10 +25,30 @@
   <script src="/app.js"></script>
   <script>
     // =========================================================
+    // Limits (keep in sync with LIMITS in worker.js)
+    // =========================================================
+
+    const LIMIT = {
+      cafeName: 60, name: 60, category: 60, description: 200, password: 256,
+      maxPrice: 100000,
+      specials: 50, bakes: 50, categories: 30, items: 100,
+      photoInputMB: 15,        // biggest photo we'll even try to open
+      photoMinWidth: 600,      // smaller than this looks blurry on the menu
+      photoMaxBytes: 550 * 1024, // after shrinking (server allows 600 KB)
+    };
+    const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+
+    // Section ids the public page builds from titles; categories can't reuse them.
+    const RESERVED_SLUGS = ['today-s-specials', 'fresh-from-the-oven'];
+    const slugify = title => title.toLowerCase().replace(/[^a-z0-9]+/g, '-');
+
+    // =========================================================
     // State and page elements
     // =========================================================
 
     let menu; // the whole menu, loaded from the server and edited in place
+    let checks = []; // one { input, test } per validated field, rebuilt by draw()
+    let saving = false;
 
     const app       = document.getElementById('app');
     const statusEl  = document.getElementById('status');
@@ -47,26 +67,65 @@
 
     // =========================================================
     // Form helpers. Each edits `obj[key]` directly as you type.
+    // Every validated field registers a check; Save runs them all.
     // =========================================================
 
-    function textInput(obj, key, placeholder) {
-      return el('input', {
+    function clearInvalid(input) {
+      input.setCustomValidity('');
+      input.classList.remove('invalid');
+    }
+
+    // rules: { max, required: 'message', extra: value => 'message' | '' }
+    function textInput(obj, key, placeholder, rules = {}) {
+      const input = el('input', {
         type: 'text',
         placeholder,
         value: obj[key] ?? '',
-        oninput: e => { obj[key] = e.target.value; markUnsaved(); },
+        maxLength: rules.max,
+        autocomplete: 'off',
+        oninput: e => { obj[key] = e.target.value; clearInvalid(input); markUnsaved(); },
       });
+
+      checks.push({
+        input,
+        test: () => {
+          const value = String(obj[key] ?? '').trim();
+          if (rules.required && !value) return rules.required;
+          if (rules.max && value.length > rules.max) return `Keep this under ${rules.max} characters`;
+          return rules.extra ? rules.extra(value) : '';
+        },
+      });
+      return input;
+    }
+
+    function priceError(value, badInput) {
+      if (badInput) return 'Enter a number, like 38 or 38.50';
+      if (value == null || Number.isNaN(value)) return 'Enter a price';
+      if (value <= 0) return 'Price must be more than R0';
+      if (value > LIMIT.maxPrice) return `Price can't be more than R${LIMIT.maxPrice}`;
+      if (Math.abs(value * 100 - Math.round(value * 100)) > 1e-6) return 'Use at most 2 decimal places';
+      return '';
     }
 
     function numberInput(obj, key, placeholder) {
-      return el('input', {
+      const input = el('input', {
         type: 'number',
         placeholder,
         value: obj[key] ?? '',
-        step: '0.5',
-        min: '0',
-        oninput: e => { obj[key] = parseFloat(e.target.value) || 0; markUnsaved(); },
+        step: '0.01',
+        min: '0.01',
+        max: String(LIMIT.maxPrice),
+        inputMode: 'decimal',
+        onkeydown: e => { if (['e', 'E', '+', '-'].includes(e.key)) e.preventDefault(); },
+        oninput: e => {
+          obj[key] = e.target.value === '' ? null : Number(e.target.value);
+          clearInvalid(input);
+          markUnsaved();
+        },
       });
+
+      checks.push({ input, test: () => priceError(obj[key], input.validity.badInput) });
+      return input;
     }
 
     function checkbox(obj, key, label) {
@@ -85,59 +144,128 @@
       return el('button', {
         class: 'ghost icon-btn',
         title: 'Remove',
+        ariaLabel: 'Remove',
         onclick: () => { removeFromList(); markUnsaved(); draw(); },
       }, icon('trash'));
     }
 
-    // "+ Add something" button. `addToList` should push a new object.
-    function addButton(label, addToList) {
+    // "+ Add something" button. `limitMessage` (if set) disables it.
+    function addButton(label, addToList, limitMessage = '') {
       return el('button', {
         class: 'ghost',
+        disabled: !!limitMessage,
+        title: limitMessage,
         onclick: () => { addToList(); markUnsaved(); draw(); },
       }, icon('plus'), label);
     }
 
+    // Runs every check, marks bad fields, and shows the browser's own bubble on the first one.
+    function runChecks() {
+      let count = 0, first = null;
+      for (const { input, test } of checks) {
+        const message = test();
+        input.setCustomValidity(message);
+        input.classList.toggle('invalid', !!message);
+        if (message) { count++; first ||= input; }
+      }
+      if (first) {
+        first.scrollIntoView({ block: 'center' });
+        first.focus({ preventScroll: true });
+        first.reportValidity();
+      }
+      return count;
+    }
+
+    // Rows the owner added but never filled in are quietly dropped on save.
+    function pruneBlankRows() {
+      const blank = row => !String(row.name ?? '').trim() && !String(row.description ?? '').trim() && !row.price;
+      const before = JSON.stringify(menu);
+      menu.specials = menu.specials.filter(row => !blank(row));
+      menu.bakes = menu.bakes.filter(row => !blank(row));
+      menu.categories.forEach(category => { category.items = category.items.filter(row => !blank(row)); });
+      return before !== JSON.stringify(menu);
+    }
+
     // =========================================================
-    // Photos: shrink in the browser, upload, remember the id
+    // Photos: validate, shrink in the browser, upload, remember the id
     // =========================================================
 
-    // Resize to max 900px and convert to JPEG so uploads stay small.
+    function canvasToJpeg(canvas, quality) {
+      return new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+    }
+
+    // Checks the file, resizes to max 900px and converts to JPEG under the size limit.
     async function shrinkImage(file) {
-      const bitmap = await createImageBitmap(file);
-      const scale = Math.min(1, 900 / Math.max(bitmap.width, bitmap.height));
+      if (!PHOTO_TYPES.includes(file.type)) throw new Error('Use a JPEG, PNG or WebP photo');
+      if (file.size > LIMIT.photoInputMB * 1024 * 1024) {
+        throw new Error(`That photo is too big (max ${LIMIT.photoInputMB} MB)`);
+      }
 
-      const canvas = document.createElement('canvas');
-      canvas.width  = Math.round(bitmap.width * scale);
-      canvas.height = Math.round(bitmap.height * scale);
-      canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      let bitmap;
+      try { bitmap = await createImageBitmap(file); }
+      catch { throw new Error("That file couldn't be read as a photo"); }
 
-      const toJpeg = quality => new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', quality));
+      try {
+        if (bitmap.width < LIMIT.photoMinWidth) {
+          throw new Error(`That photo is too small (at least ${LIMIT.photoMinWidth}px wide)`);
+        }
 
-      let blob = await toJpeg(0.8);
-      if (blob.size > 550 * 1024) blob = await toJpeg(0.6); // still big? squeeze harder
-      return blob;
+        let scale = Math.min(1, 900 / Math.max(bitmap.width, bitmap.height));
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Try a few sizes and qualities until it fits the size limit.
+        for (let attempt = 0; attempt < 4; attempt++) {
+          canvas.width  = Math.max(1, Math.round(bitmap.width * scale));
+          canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+          ctx.fillStyle = '#fff'; // PNGs with see-through areas would turn black as JPEG
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+
+          for (const quality of [0.8, 0.65, 0.5]) {
+            const blob = await canvasToJpeg(canvas, quality);
+            if (blob && blob.size <= LIMIT.photoMaxBytes) return blob;
+          }
+          scale *= 0.8;
+        }
+        throw new Error("Couldn't shrink that photo enough. Try a simpler one");
+      } finally {
+        bitmap.close();
+      }
     }
 
     // Sends the photo to the server, returns the new image id.
     async function uploadPhoto(file) {
       const blob = await shrinkImage(file);
-      const response = await fetch('/api/admin/upload', {
-        method: 'POST',
-        headers: { 'content-type': 'image/jpeg' },
-        body: blob,
-      });
+
+      let response;
+      try {
+        response = await fetch('/api/admin/upload', {
+          method: 'POST',
+          headers: { 'content-type': 'image/jpeg' },
+          body: blob,
+        });
+      } catch {
+        throw new Error('Could not reach the server');
+      }
+
+      let data = {};
+      try { data = await response.json(); } catch {}
+
       if (response.status === 401) throw new Error('Please sign in again');
-      if (!response.ok) throw new Error('upload failed');
-      return (await response.json()).id;
+      if (!response.ok) throw new Error(data.error || 'Upload failed');
+      if (!data.id) throw new Error('Upload failed');
+      return data.id;
     }
 
     // Photo control for a whole section. `obj[key]` holds the image id.
     function photoPicker(obj, key = 'image') {
       const fileInput = el('input', {
         type: 'file',
-        accept: 'image/*',
+        accept: PHOTO_TYPES.join(','),
         onchange: async e => {
           const file = e.target.files[0];
+          e.target.value = ''; // lets the same file be picked again after an error
           if (!file) return;
 
           setStatus('Uploading photo…');
@@ -155,6 +283,7 @@
       const removePhoto = el('button', {
         class: 'ghost icon-btn',
         title: 'Remove photo',
+        ariaLabel: 'Remove photo',
         onclick: () => { obj[key] = ''; markUnsaved(); draw(); },
       }, icon('trash'));
 
@@ -173,20 +302,24 @@
     // The editor sections
     // =========================================================
 
+    const nameRules  = { max: LIMIT.name, required: 'Enter a name' };
+    const descRules  = { max: LIMIT.description };
+
     function cafeNameSection() {
       return el('section', {},
         el('h2', {}, 'Cafe name'),
-        el('div', { class: 'card' }, textInput(menu, 'cafeName', 'Cafe name'))
+        el('div', { class: 'card' },
+          textInput(menu, 'cafeName', 'Cafe name', { max: LIMIT.cafeName, required: 'Enter the cafe name' }))
       );
     }
 
     function specialsSection() {
       const rows = menu.specials.map((special, index) =>
         el('div', { class: 'edit sp' },
-          textInput(special, 'name', 'Special'),
+          textInput(special, 'name', 'Special', nameRules),
           numberInput(special, 'price', 'Price'),
           removeButton(() => menu.specials.splice(index, 1)),
-          el('div', { class: 'full' }, textInput(special, 'description', 'Short description (optional)'))
+          el('div', { class: 'full' }, textInput(special, 'description', 'Short description (optional)', descRules))
         )
       );
 
@@ -195,7 +328,8 @@
         el('div', { class: 'card' },
           photoPicker(menu, 'specialsImage'),
           ...rows,
-          addButton('Add special', () => menu.specials.push({ name: '', price: 0, description: '' }))
+          addButton('Add special', () => menu.specials.push({ name: '', price: null, description: '' }),
+            menu.specials.length >= LIMIT.specials ? `Maximum of ${LIMIT.specials} specials` : '')
         )
       );
     }
@@ -203,7 +337,7 @@
     function bakesSection() {
       const rows = menu.bakes.map((bake, index) =>
         el('div', { class: 'edit' },
-          textInput(bake, 'name', 'Bake'),
+          textInput(bake, 'name', 'Bake', nameRules),
           numberInput(bake, 'price', 'Price'),
           checkbox(bake, 'soldOut', 'Sold out'),
           removeButton(() => menu.bakes.splice(index, 1))
@@ -215,7 +349,8 @@
         el('div', { class: 'card' },
           photoPicker(menu, 'bakesImage'),
           ...rows,
-          addButton('Add bake', () => menu.bakes.push({ name: '', price: 0, soldOut: false }))
+          addButton('Add bake', () => menu.bakes.push({ name: '', price: null, soldOut: false }),
+            menu.bakes.length >= LIMIT.bakes ? `Maximum of ${LIMIT.bakes} bakes` : '')
         )
       );
     }
@@ -223,37 +358,52 @@
     // One item row inside a category (photos now live on the section, not the item).
     function categoryItemRow(category, item, index) {
       return el('div', { class: 'edit' },
-        textInput(item, 'name', 'Item'),
+        textInput(item, 'name', 'Item', nameRules),
         numberInput(item, 'price', 'Price'),
         checkbox(item, 'unavailable', 'Hide'),
         removeButton(() => category.items.splice(index, 1)),
-        el('div', { class: 'full' }, textInput(item, 'description', 'Short description (optional)'))
+        el('div', { class: 'full' }, textInput(item, 'description', 'Short description (optional)', descRules))
       );
+    }
+
+    // Category names become section ids on the public page, so they must be distinct.
+    function categoryNameProblem(name) {
+      const slug = slugify(name);
+      if (!/[a-z0-9]/.test(slug)) return 'Use at least one letter or number';
+      if (RESERVED_SLUGS.includes(slug)) return 'That name is already used by another section';
+      const same = menu.categories.filter(c => slugify(String(c.name ?? '').trim()) === slug).length;
+      return same > 1 ? 'Two categories have the same name' : '';
     }
 
     function categorySection(category, categoryIndex) {
       return el('section', {},
         el('div', { class: 'card' },
           el('div', { class: 'cat-head' },
-            textInput(category, 'name', 'Category name'),
+            textInput(category, 'name', 'Category name', {
+              max: LIMIT.category,
+              required: 'Give this category a name',
+              extra: categoryNameProblem,
+            }),
             removeButton(() => menu.categories.splice(categoryIndex, 1))
           ),
           photoPicker(category, 'image'),
           ...category.items.map((item, i) => categoryItemRow(category, item, i)),
-          addButton('Add item', () =>
-            category.items.push({ name: '', price: 0, description: '' }))
+          addButton('Add item', () => category.items.push({ name: '', price: null, description: '' }),
+            category.items.length >= LIMIT.items ? `Maximum of ${LIMIT.items} items per category` : '')
         )
       );
     }
 
     function addCategorySection() {
       return el('section', {},
-        addButton('Add category', () => menu.categories.push({ name: 'New category', image: '', items: [] }))
+        addButton('Add category', () => menu.categories.push({ name: 'New category', image: '', items: [] }),
+          menu.categories.length >= LIMIT.categories ? `Maximum of ${LIMIT.categories} categories` : '')
       );
     }
 
     // Rebuild the whole editor from the current `menu`.
     function draw() {
+      checks = [];
       app.replaceChildren(
         cafeNameSection(),
         specialsSection(),
@@ -270,11 +420,13 @@
     function loadMenu() {
       saveBtn.style.display = '';
       signOutBtn.style.display = '';
+      setStatus('');
 
       fetch('/api/menu')
-        .then(response => response.json())
+        .then(response => { if (!response.ok) throw new Error(); return response.json(); })
         .then(data => {
-          menu = data;
+          menu = data && typeof data === 'object' ? data : {};
+          menu.cafeName   ??= "SUP's Cafe";
           menu.specials   ??= [];
           menu.bakes      ??= [];
           menu.categories ??= [];
@@ -285,16 +437,30 @@
           menu.bakesImage    ||= firstPhoto(menu.bakes);
 
           menu.categories.forEach(category => {
+            category.items ??= [];
             category.image ||= firstPhoto(category.items);
             category.items = category.items.filter(i => i.name || !i.image); // drop old photo-only rows
             category.items.forEach(item => { item.unavailable = item.available === false; });
           });
 
           draw();
-        });
+        })
+        .catch(() => setStatus('Could not load the menu. Refresh the page.', true));
     }
 
     async function saveMenu() {
+      if (saving || !menu) return;
+
+      if (pruneBlankRows()) draw(); // forget empty rows, then check what's left
+
+      const problems = runChecks();
+      if (problems) {
+        setStatus(`Fix the ${problems} highlighted field${problems > 1 ? 's' : ''} before saving`, true);
+        return;
+      }
+
+      saving = true;
+      saveBtn.disabled = true;
       setStatus('Saving…');
 
       // Turn the "Hide" checkbox into the `available` field the server expects.
@@ -303,16 +469,28 @@
       });
 
       try {
-        const response = await fetch('/api/admin/menu', {
-          method: 'PUT',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(menu),
-        });
-        if (!response.ok) throw new Error((await response.json()).error || 'Error');
+        let response;
+        try {
+          response = await fetch('/api/admin/menu', {
+            method: 'PUT',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(menu),
+          });
+        } catch {
+          throw new Error('Could not reach the server');
+        }
+
+        let data = {};
+        try { data = await response.json(); } catch {}
+        if (!response.ok) throw new Error(data.error || `Error ${response.status}`);
+
         setStatus('Saved. The menu is live.');
       } catch (err) {
         setStatus('Could not save: ' + err.message, true);
         if (/sign in/i.test(err.message)) showLogin();
+      } finally {
+        saving = false;
+        saveBtn.disabled = false;
       }
     }
 
@@ -327,18 +505,25 @@
       signOutBtn.style.display = 'none';
       setStatus('');
 
+      let busy = false;
+
+      const errorEl = el('p', { class: 'status err login-err', role: 'alert' }, message || '');
+
       const passwordInput = el('input', {
         type: 'password',
         placeholder: 'Password',
+        ariaLabel: 'Password',
         autocomplete: 'current-password',
+        maxLength: LIMIT.password,
         onkeydown: e => { if (e.key === 'Enter') submit(); },
+        oninput: () => { errorEl.textContent = ''; },
       });
 
       const eyeBtn = el('button', {
         type: 'button',
         class: 'eye',
         title: 'Show password',
-        'aria-label': 'Show password',
+        ariaLabel: 'Show password',
         onclick: () => {
           const show = passwordInput.type === 'password';
           passwordInput.type = show ? 'text' : 'password';
@@ -348,14 +533,46 @@
         },
       }, icon('eye'));
 
+      const signInBtn = el('button', { class: 'login-btn', onclick: () => submit() }, 'Sign in');
+
       async function submit() {
-        const response = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ password: passwordInput.value }),
-        });
-        if (response.ok) loadMenu();
-        else showLogin((await response.json()).error || 'Could not sign in');
+        if (busy) return;
+        if (!passwordInput.value) {
+          errorEl.textContent = 'Enter your password';
+          passwordInput.focus();
+          return;
+        }
+
+        busy = true;
+        signInBtn.disabled = true;
+        signInBtn.textContent = 'Signing in…';
+        errorEl.textContent = '';
+
+        try {
+          let response;
+          try {
+            response = await fetch('/api/login', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({ password: passwordInput.value }),
+            });
+          } catch {
+            throw new Error('Could not reach the server');
+          }
+
+          if (response.ok) { loadMenu(); return; }
+
+          let data = {};
+          try { data = await response.json(); } catch {}
+          throw new Error(data.error || 'Could not sign in');
+        } catch (err) {
+          errorEl.textContent = err.message;
+          passwordInput.select();
+        } finally {
+          busy = false;
+          signInBtn.disabled = false;
+          signInBtn.textContent = 'Sign in';
+        }
       }
 
       app.replaceChildren(
@@ -365,9 +582,8 @@
             el('h2', {}, 'Owner sign in'),
             el('p', { class: 'login-sub' }, 'Enter your password to edit the menu.'),
             el('div', { class: 'pw' }, passwordInput, eyeBtn),
-            el('button', { class: 'login-btn', onclick: submit }, 'Sign in'),
-            el('p', { class: 'status err login-err' }, message || ''),
-            el('a', { class: 'login-back', href: '/' }, '← Back to public menu')
+            signInBtn,
+            errorEl
           )
         )
       );
@@ -382,15 +598,17 @@
         } catch (err) {
           console.error('Logout request failed:', err);
         } finally {
-          window.location.href = '/'; 
+          window.location.href = '/';
         }
       },
     }, 'Sign out');
 
-    saveBtn.before(signOutBtn); 
+    saveBtn.before(signOutBtn);
 
     // On page load: if we already have a valid session, go straight to the editor.
-    fetch('/api/session').then(response => response.ok ? loadMenu() : showLogin());
+    fetch('/api/session')
+      .then(response => response.ok ? loadMenu() : showLogin())
+      .catch(() => showLogin('Could not reach the server'));
   </script>
 </body>
 </html>

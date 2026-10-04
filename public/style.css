@@ -167,10 +167,17 @@ input:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold
 .login-sub{margin:8px 0 22px;color:var(--muted);font-size:.95rem}
 .pw{position:relative}
 .pw input{height:52px;padding:0 52px 0 16px;font-size:1.05rem;border:1.5px solid var(--line);border-radius:8px;text-align:left}
-.pw input:focus{outline:none;border-color:var(--terra);box-shadow:0 0 0 3px rgba(200,90,55,.18)}
+.pw input:focus,.pw input:focus-visible{outline:none;border-color:#111;box-shadow:0 0 0 1px #111}
 .pw .eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:40px;height:40px;padding:0;justify-content:center;background:transparent;border:0;color:var(--muted);font-size:1.2rem}
 .pw .eye:hover{background:transparent;color:var(--terra)}
+.pw .eye:focus-visible,.login-btn:focus-visible{outline:2px solid #111;outline-offset:2px}
 .login-btn{width:100%;height:50px;margin-top:16px;justify-content:center;border-radius:8px;font:700 .85rem 'Montserrat',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em}
 .login-err{min-height:1.4em;margin:14px 0 0}
-.login-back{display:inline-block;margin-top:18px;color:var(--maroon);font-size:.9rem;font-weight:600;text-decoration:none}
-.login-back:hover{text-decoration:underline}
+
+/* ---------- Editor validation ---------- */
+input.invalid,input.invalid:focus{border-color:#a02020;outline-color:#a02020;box-shadow:0 0 0 1px #a02020}
+button:disabled{opacity:.5;cursor:not-allowed}
+button:disabled:hover{background:var(--terra);border-color:var(--terra)}
+button.ghost:disabled:hover{background:transparent;color:var(--terra);border-color:var(--terra)}
+.bar .status{text-align:right;line-height:1.3}
+.login-card .login-err{text-align:center}
