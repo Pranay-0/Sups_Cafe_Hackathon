@@ -366,7 +366,8 @@
             el('p', { class: 'login-sub' }, 'Enter your password to edit the menu.'),
             el('div', { class: 'pw' }, passwordInput, eyeBtn),
             el('button', { class: 'login-btn', onclick: submit }, 'Sign in'),
-            el('p', { class: 'status err login-err' }, message || '')
+            el('p', { class: 'status err login-err' }, message || ''),
+            el('a', { class: 'login-back', href: '/' }, '← Back to public menu')
           )
         )
       );

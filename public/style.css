@@ -172,3 +172,5 @@ input:focus,textarea:focus{outline:2px solid var(--gold);border-color:var(--gold
 .pw .eye:hover{background:transparent;color:var(--terra)}
 .login-btn{width:100%;height:50px;margin-top:16px;justify-content:center;border-radius:8px;font:700 .85rem 'Montserrat',system-ui,sans-serif;text-transform:uppercase;letter-spacing:.08em}
 .login-err{min-height:1.4em;margin:14px 0 0}
+.login-back{display:inline-block;margin-top:18px;color:var(--maroon);font-size:.9rem;font-weight:600;text-decoration:none}
+.login-back:hover{text-decoration:underline}
